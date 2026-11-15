@@ -1,0 +1,29 @@
+# Secrets and local environments
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+
+# Python build and test artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+
+# Downloaded third-party corpus and generated artifacts
+data/raw/
+data/index/
+data/cache/
+data/runs/
+models/
+logs/
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,14 @@
+# Self-written fixtures for local development. Task 1 adds pinned d2l-zh/d2l-en sources.
+sources:
+  - source_id: sample-attention-zh
+    kind: local_markdown
+    path: data/sample/attention_zh.md
+    title: 注意力机制示例
+    language: zh
+    license_note: 项目自写示例
+  - source_id: sample-attention-en
+    kind: local_markdown
+    path: data/sample/attention_en.md
+    title: Attention example
+    language: en
+    license_note: Original project sample
