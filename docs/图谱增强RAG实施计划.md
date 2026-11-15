@@ -73,7 +73,7 @@
 
 **Interfaces:** 产出 `load_sources(path: Path) -> list[SourceSpec]`、`fetch_sources(specs: list[SourceSpec], raw_dir: Path, downloader: Callable[[str], bytes]) -> list[Path]`、`build_corpus(specs: list[SourceSpec], raw_dir: Path, out_dir: Path) -> list[Chunk]`；CLI 的 `fetch` 提供网络下载器，`ingest` 只读取已校验的本地文件；后续任务读取 `out_dir/chunks.jsonl`。
 
-- [ ] **Step 1: 写失败测试。** 用伪下载器和自写中英文 Markdown 断言：只下载清单列出的文件、校验两个仓库各自的完整提交 SHA 与文件 SHA256、校验失败中止、已校验文件可离线复用；`*_origin.md` 不入库。再断言新增本地来源后旧 `chunk_id` 与固定版本 URL 不变，重复 `build_corpus` 的记录和 ID 完全相同，标题/公式/代码块解析保留来源位置且去除构建指令。
+- [ ] **Step 1: 写失败测试。** 用伪下载器和自写中英文 Markdown 断言：只下载清单列出的文件、校验两个仓库各自的完整提交 SHA 与文件 SHA256、校验失败中止、已校验文件可离线复用；`*_origin.md` 不入库。再断言新增本地来源后旧 `chunk_id` 与固定版本 URL 不变，重复 `build_corpus` 的记录和 ID 完全相同。解析测试需覆盖首个标题之前的 D2L 执行代码块，以及标题、公式、普通代码块；保留来源位置并去除构建指令。
 - [ ] **Step 2: 运行 `python -m pytest tests/test_fetch.py tests/test_ingest.py -v`。** 预期因接口不存在而失败。
 - [ ] **Step 3: 实现来源清单、固定提交下载与哈希校验、本地 Markdown 解析和稳定分块。** 下载的教材文件落在 `data/raw/<仓库名>/<path>`，建立 `.gitignore` 排除 `data/raw/`、生成索引、模型、缓存和 `.env`；`ingest` 不访问网络或大模型。固定中英文两个仓库的实际提交和逐文件路径/哈希，来源列表只覆盖第一版主题。
 - [ ] **Step 4: 再运行同一测试。** 预期全部通过；运行 `python -m kgrag.cli fetch --sources config/sources.yaml` 后运行 `python -m kgrag.cli ingest --sources config/sources.yaml`，确认两个仓库的片段都出现；断网或使用伪下载器验证入库可离线重建，再加入自写 Markdown 来源，确认新片段出现且旧 ID 不变。

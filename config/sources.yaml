@@ -1,4 +1,4 @@
-# Self-written fixtures for local development. Task 1 adds pinned d2l-zh/d2l-en sources.
+# Self-written examples and pinned D2L Markdown to download locally.
 sources:
   - source_id: sample-attention-zh
     kind: local_markdown
@@ -12,3 +12,255 @@ sources:
     title: Attention example
     language: en
     license_note: Original project sample
+  - source_id: "d2l-zh:chapter_attention-mechanisms/attention-cues.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_attention-mechanisms/attention-cues.md
+    title: "注意力提示"
+    language: zh
+    sha256: 471641027282391759402551e3f3edd17ce26a85cdd654df1700ca0da653eebd
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_attention-mechanisms/attention-scoring-functions.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_attention-mechanisms/attention-scoring-functions.md
+    title: "注意力评分函数"
+    language: zh
+    sha256: 7c864b6d8c42d6d512beadc3cd74eead80eac19e37a5ef9adadea350ae6e1f64
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_attention-mechanisms/bahdanau-attention.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_attention-mechanisms/bahdanau-attention.md
+    title: "Bahdanau 注意力"
+    language: zh
+    sha256: d2bfc5b6194be32eff8395a754431d32cf2f6a34b19e959dca521dfb3bc12599
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_attention-mechanisms/multihead-attention.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_attention-mechanisms/multihead-attention.md
+    title: "多头注意力"
+    language: zh
+    sha256: 992b15cd04af70c15cc110d2166f553aecdc09b6c752e51ae1804e57e416157d
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_attention-mechanisms/nadaraya-waston.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_attention-mechanisms/nadaraya-waston.md
+    title: "注意力汇聚：Nadaraya-Watson 核回归"
+    language: zh
+    sha256: 66e0483427bdb9748fb997113d67dade1aaa09ba4e67b5e29835e272ac126301
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_attention-mechanisms/self-attention-and-positional-encoding.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_attention-mechanisms/self-attention-and-positional-encoding.md
+    title: "自注意力和位置编码"
+    language: zh
+    sha256: 3556563c960b3c1a55eb7249a6a884e1a42dd0dc11e9738eec05d1aba002d813
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_attention-mechanisms/transformer.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_attention-mechanisms/transformer.md
+    title: "Transformer"
+    language: zh
+    sha256: 480e91e1b9bcc6e049cce9e6c2c85fa94afed5095b2022217d08abda49279a35
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_recurrent-modern/beam-search.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_recurrent-modern/beam-search.md
+    title: "束搜索"
+    language: zh
+    sha256: 4165fd5afe5ad4857d9d6cc3ccefa913a6adef487aff56a991a135d1849c37cc
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_recurrent-modern/encoder-decoder.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_recurrent-modern/encoder-decoder.md
+    title: "编码器-解码器架构"
+    language: zh
+    sha256: ca6171e55b1a2e9d251184087986b4d927335fae7f2c138ac1e80e56fa2ed33c
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_recurrent-modern/machine-translation-and-dataset.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_recurrent-modern/machine-translation-and-dataset.md
+    title: "机器翻译与数据集"
+    language: zh
+    sha256: 38d405affad24b01e1c9fcd088a5d5774e054954da066f466a648d8c90f7c3ae
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_recurrent-modern/seq2seq.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_recurrent-modern/seq2seq.md
+    title: "序列到序列学习（seq2seq）"
+    language: zh
+    sha256: d891c2b70ea6aaa3cf46819d71a716546591a03526f0d7843bba8c09b30b16b8
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_recurrent-neural-networks/language-models-and-dataset.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_recurrent-neural-networks/language-models-and-dataset.md
+    title: "语言模型和数据集"
+    language: zh
+    sha256: 9339622f0d01ce4877cfa58950ffa6fdd942c1cf38274cc8a90439c70482d59c
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_recurrent-neural-networks/rnn.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_recurrent-neural-networks/rnn.md
+    title: "循环神经网络"
+    language: zh
+    sha256: 573f138a3450f3d2d35f565b196dc97696178ea1ab1a80f9c07bfa004968b610
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-zh:chapter_recurrent-neural-networks/sequence.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-zh
+    revision: e6b18ccea71451a55fcd861d7b96fddf2587b09a
+    path: chapter_recurrent-neural-networks/sequence.md
+    title: "序列模型"
+    language: zh
+    sha256: 14a6178318573eef537f65590475206297ed404ce9da23cbe33c8c92d766b2ff
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_attention-mechanisms-and-transformers/attention-pooling.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_attention-mechanisms-and-transformers/attention-pooling.md
+    title: "Attention Pooling by Similarity"
+    language: en
+    sha256: e8701fde7ec437764fbb990c87999731a748ec014dd71366ad5d1bebcc0c9d2a
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_attention-mechanisms-and-transformers/attention-scoring-functions.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_attention-mechanisms-and-transformers/attention-scoring-functions.md
+    title: "Attention Scoring Functions"
+    language: en
+    sha256: 0ff7897c34919301660855ae6820173b657dd28926f7de4ae3ec527454c4285d
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_attention-mechanisms-and-transformers/bahdanau-attention.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_attention-mechanisms-and-transformers/bahdanau-attention.md
+    title: "The Bahdanau Attention Mechanism"
+    language: en
+    sha256: 8e4a4c470f0426475f4f0fc45821c52a0e244dd6171f439504084d2aa6013ab9
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_attention-mechanisms-and-transformers/multihead-attention.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_attention-mechanisms-and-transformers/multihead-attention.md
+    title: "Multi-Head Attention"
+    language: en
+    sha256: 97404b61a99bcb29ae18ad64147562244f803ac6af2bd5b17b3e3cba8e80a108
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_attention-mechanisms-and-transformers/queries-keys-values.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_attention-mechanisms-and-transformers/queries-keys-values.md
+    title: "Queries, Keys, and Values"
+    language: en
+    sha256: 880642f004c40c95fc5ecc0b6dee98aedb5fc014ab814bbff35838441de12c8d
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_attention-mechanisms-and-transformers/self-attention-and-positional-encoding.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_attention-mechanisms-and-transformers/self-attention-and-positional-encoding.md
+    title: "Self-Attention and Positional Encoding"
+    language: en
+    sha256: 8b6eeedba841fbd231edaa5f0f1524bf17c82449623bd2e46f8da21a0cead35f
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_attention-mechanisms-and-transformers/transformer.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_attention-mechanisms-and-transformers/transformer.md
+    title: "The Transformer Architecture"
+    language: en
+    sha256: 085f66181f137620d27b61eabfeefe3927258abaabdf2693a8887bb186415c82
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_recurrent-modern/beam-search.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_recurrent-modern/beam-search.md
+    title: "Beam Search"
+    language: en
+    sha256: b71d99c04c00dc5393991c6df4d36971e6d54e39853b01b200d4a2f038a3a833
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_recurrent-modern/encoder-decoder.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_recurrent-modern/encoder-decoder.md
+    title: "The Encoder--Decoder Architecture"
+    language: en
+    sha256: ad89663c337fc3aed42c26fb53365bb249a33ac96e45828adfb9ae0072cd0b05
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_recurrent-modern/machine-translation-and-dataset.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_recurrent-modern/machine-translation-and-dataset.md
+    title: "Machine Translation and the Dataset"
+    language: en
+    sha256: f23f1cbc9bc70a27affe6e3aee611db3014c3767899c50c72c4b0ef50cd645f9
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_recurrent-modern/seq2seq.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_recurrent-modern/seq2seq.md
+    title: "Sequence-to-Sequence Learning for Machine Translation"
+    language: en
+    sha256: 4a8968fc425166377153fd749b359411455918496498ab3c98374a7b367b6c04
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_recurrent-neural-networks/language-model.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_recurrent-neural-networks/language-model.md
+    title: "Language Models"
+    language: en
+    sha256: 19b60293fdc8f6546d24f53e528381ec0bdd99bce40ce118f2d5ac61a911e18f
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_recurrent-neural-networks/rnn.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_recurrent-neural-networks/rnn.md
+    title: "Recurrent Neural Networks"
+    language: en
+    sha256: cfa3068a1ff226b281c7743e7d852896486fcf797d4a9341f0dee70be92f161d
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
+  - source_id: "d2l-en:chapter_recurrent-neural-networks/sequence.md"
+    kind: github_markdown
+    repo: d2l-ai/d2l-en
+    revision: 23d7a5aecceee57d1292c56e90cce307f183bb0a
+    path: chapter_recurrent-neural-networks/sequence.md
+    title: "Working with Sequences"
+    language: en
+    sha256: 081422a2ae56a90198f75a0798b1f61b2a71ab2a8c7d36902dc87872f0320cac
+    license_note: "Textbook content: check the pinned upstream revision before reuse; keep local"
