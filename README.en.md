@@ -6,7 +6,7 @@ This repository is being built as a local graph-enhanced RAG experiment using Ch
 
 The [implementation plan](docs/图谱增强RAG实施计划.md), [design](docs/图谱增强RAG项目设计草案.md), and [bilingual design supplement](docs/superpowers/specs/2026-11-15-bilingual-local-markdown-rag-design.md) describe the research question, data workflow, and acceptance criteria.
 
-The repository now contains project documents, original bilingual samples, and offline Markdown ingestion code. The `ingest` command reads the source list, verifies SHA256 hashes of locally downloaded textbook files, chunks them by section, and writes `data/index/chunks.jsonl` plus a local build manifest. The Notebook walks through chunking for learning. Automatic textbook download, vector indexing, graph construction, retrieval, reranking, generation, and evaluation are still pending. Third-party textbook files and generated chunks stay local and are not committed.
+The repository now contains project documents, original bilingual samples, and offline Markdown ingestion code. The `ingest` command reads the source list, verifies SHA256 hashes of locally downloaded textbook files, chunks them by section, and writes `data/index/chunks.jsonl` plus a local build manifest. Automatic textbook download, vector indexing, graph construction, retrieval, reranking, generation, and evaluation are still pending. Third-party textbook files and generated chunks stay local and are not committed.
 
 ## Local ingestion
 
