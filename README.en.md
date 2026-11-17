@@ -22,14 +22,20 @@ python -m kgrag.cli ingest --sources config/sources.yaml
 
 ## Vector index and Chinese answers
 
-Install the optional local embedding dependencies before building the index. The default model is `BAAI/bge-m3`, with batch size 8 and a maximum passage length of 2048 tokens. Adjust these with `--batch-size` and `--passage-max-length`, using the same settings for `build-index` and `ask`; the index records them along with the resolved model revision. Its first use may download model files. You can point `--embedding-model` to a local model directory, and should pin `--embedding-revision` for a formal experiment. Use `--device mps` to run local embeddings on a supported Mac. Answer generation defaults to DeepSeek `deepseek-flash` in non-thinking mode and requires `DEEPSEEK_API_KEY`; index building does not.
+Install the optional local embedding dependencies before building the index. The default model is `BAAI/bge-m3`, with batch size 8 and a maximum passage length of 2048 tokens. Adjust these with `--batch-size` and `--passage-max-length`, using the same settings for `build-index` and `ask`; the index records them along with the resolved model revision. Its first use may download model files. You can point `--embedding-model` to a local model directory, and should pin `--embedding-revision` for a formal experiment. Use `--device mps` to run local embeddings on a supported Mac. Answer generation defaults to DeepSeek `deepseek-flash` in non-thinking mode and requires the `DEEPSEEK_API_KEY` environment variable; index building does not. These commands hide key input in the current terminal instead of putting it in shell history:
 
 ```bash
 python -m pip install -e '.[embedding]'
 python -m kgrag.cli build-index --chunks data/index/chunks.jsonl
-export DEEPSEEK_API_KEY=your_key_here
+printf 'DeepSeek API Key: '
+IFS= read -rs DEEPSEEK_API_KEY
+printf '\n'
+export DEEPSEEK_API_KEY
 python -m kgrag.cli ask "注意力机制如何使用查询和键？"
+unset DEEPSEEK_API_KEY
 ```
+
+To keep the key on this machine, put it in `.env` at the repository root and restrict that file's permissions. `.gitignore` excludes `.env`, but the program does not load it automatically; you must load it into the environment before running. Keep `.env.example` empty of real secrets. Check staged files with `git status` before committing, and never force-add a key file. If a key was pushed, revoke and replace it with the provider immediately.
 
 `ask` outputs a Chinese answer with passage IDs cited for individual claims, evidence languages and source links, plus model and generation settings. The program checks citation IDs and markers; whether a passage actually supports a claim still requires human review. It returns an insufficient-evidence response when there is no evidence or no valid citation. If model memory is limited, select a smaller multilingual FlagEmbedding model with `--embedding-model`, specify its model type with `--embedding-class` and, if needed, its pooling method with `--pooling-method`; rebuild the index with the same configuration. The three planned retrieval modes must share this index.
 
