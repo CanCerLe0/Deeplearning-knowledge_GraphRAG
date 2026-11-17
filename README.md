@@ -22,7 +22,7 @@ python -m kgrag.cli ingest --sources config/sources.yaml
 
 ## 向量索引与中文问答
 
-安装可选的本地 embedding 依赖后构建索引；默认模型为 `BAAI/bge-m3`。模型首次使用时可能需要下载，索引会记录实际模型版本。若已下载模型，也可用 `--embedding-model` 指向本地目录；正式实验建议用 `--embedding-revision` 固定版本。生成答案默认使用 DeepSeek `deepseek-flash` 的非思考模式，需要设置 `DEEPSEEK_API_KEY`；索引构建不需要密钥。
+安装可选的本地 embedding 依赖后构建索引；默认模型为 `BAAI/bge-m3`，批量大小为 8，片段最大长度为 2048 token。可用 `--batch-size` 和 `--passage-max-length` 调整，并在 `build-index` 与 `ask` 中使用相同设置；索引会记录这些设置与实际模型版本。模型首次使用时可能需要下载。若已下载模型，也可用 `--embedding-model` 指向本地目录；正式实验建议用 `--embedding-revision` 固定版本。可用 `--device mps` 在支持的 Mac 上运行本地 embedding。生成答案默认使用 DeepSeek `deepseek-flash` 的非思考模式，需要设置 `DEEPSEEK_API_KEY`；索引构建不需要密钥。
 
 ```bash
 python -m pip install -e '.[embedding]'

@@ -44,6 +44,8 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--embedding-revision", default="main")
         command.add_argument("--embedding-class", default=None)
         command.add_argument("--pooling-method", default=None)
+        command.add_argument("--batch-size", type=int, default=8)
+        command.add_argument("--passage-max-length", type=int, default=None)
         command.add_argument("--device", default=None)
     args = parser.parse_args(argv)
 
@@ -57,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         embedder = FlagEmbedder(
             model_id=args.embedding_model, revision=args.embedding_revision,
             model_class=args.embedding_class, pooling_method=args.pooling_method,
+            batch_size=args.batch_size, passage_max_length=args.passage_max_length,
             device=args.device,
         )
         if args.command == "build-index":
@@ -101,6 +104,8 @@ def main(argv: list[str] | None = None) -> int:
                 "embedding_revision": embedder.revision,
                 "embedding_model_class": getattr(embedder, "model_class", None),
                 "embedding_pooling_method": getattr(embedder, "pooling_method", None),
+                "embedding_batch_size": getattr(embedder, "batch_size", None),
+                "embedding_passage_max_length": getattr(embedder, "passage_max_length", None),
                 "generation_model_id": args.chat_model,
                 "generation_model_version": generation_model_version,
                 "temperature": args.temperature,

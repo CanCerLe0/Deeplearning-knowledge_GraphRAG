@@ -22,7 +22,7 @@ python -m kgrag.cli ingest --sources config/sources.yaml
 
 ## Vector index and Chinese answers
 
-Install the optional local embedding dependencies before building the index. The default model is `BAAI/bge-m3`. Its first use may download model files; the index records the resolved model revision. You can point `--embedding-model` to a local model directory, and should pin `--embedding-revision` for a formal experiment. Answer generation defaults to DeepSeek `deepseek-flash` in non-thinking mode and requires `DEEPSEEK_API_KEY`; index building does not.
+Install the optional local embedding dependencies before building the index. The default model is `BAAI/bge-m3`, with batch size 8 and a maximum passage length of 2048 tokens. Adjust these with `--batch-size` and `--passage-max-length`, using the same settings for `build-index` and `ask`; the index records them along with the resolved model revision. Its first use may download model files. You can point `--embedding-model` to a local model directory, and should pin `--embedding-revision` for a formal experiment. Use `--device mps` to run local embeddings on a supported Mac. Answer generation defaults to DeepSeek `deepseek-flash` in non-thinking mode and requires `DEEPSEEK_API_KEY`; index building does not.
 
 ```bash
 python -m pip install -e '.[embedding]'

@@ -29,7 +29,8 @@ class FlagEmbedder:
     def __init__(
         self, model_id: str = "BAAI/bge-m3", revision: str = "main", *,
         device: str | None = None, model_class: str | None = None,
-        pooling_method: str | None = None,
+        pooling_method: str | None = None, batch_size: int = 8,
+        passage_max_length: int | None = None,
     ) -> None:
         try:
             from FlagEmbedding import FlagAutoModel
@@ -43,16 +44,27 @@ class FlagEmbedder:
         if self.model_class is None:
             raise ValueError("其他 embedding 模型须显式指定 model_class")
         self.pooling_method = pooling_method
+        self.batch_size = batch_size
+        self.passage_max_length = passage_max_length if passage_max_length is not None else (
+            2048 if self.model_class == "encoder-only-m3" else 512
+        )
+        if self.batch_size < 1 or self.passage_max_length < 1:
+            raise ValueError("embedding 批量和片段长度必须为正整数")
         local_path = Path(model_id)
         if local_path.exists():
             model_path = str(local_path)
             self.revision = revision
         else:
-            model_path = snapshot_download(repo_id=model_id, revision=revision)
+            model_path = snapshot_download(
+                repo_id=model_id, revision=revision,
+                ignore_patterns=["onnx/*", "imgs/*"],
+            )
             self.revision = Path(model_path).name
         options = {
             "model_class": self.model_class,
             "use_fp16": device is not None and device.startswith("cuda"),
+            "batch_size": self.batch_size,
+            "passage_max_length": self.passage_max_length,
         }
         if device is not None:
             options["devices"] = device
@@ -127,6 +139,8 @@ class DenseIndex:
             "embedding_revision": embedder.revision,
             "embedding_model_class": getattr(embedder, "model_class", None),
             "embedding_pooling_method": getattr(embedder, "pooling_method", None),
+            "embedding_batch_size": getattr(embedder, "batch_size", None),
+            "embedding_passage_max_length": getattr(embedder, "passage_max_length", None),
             "normalization": "l2",
             "chunk_count": len(chunks),
             "dimensions": vectors.shape[1],
@@ -149,8 +163,16 @@ class DenseIndex:
             embedder.model_id, embedder.revision
         ):
             raise ValueError("embedding 模型或版本与索引不一致")
-        if (manifest.get("embedding_model_class"), manifest.get("embedding_pooling_method")) != (
-            getattr(embedder, "model_class", None), getattr(embedder, "pooling_method", None)
+        if (
+            manifest.get("embedding_model_class"),
+            manifest.get("embedding_pooling_method"),
+            manifest.get("embedding_batch_size"),
+            manifest.get("embedding_passage_max_length"),
+        ) != (
+            getattr(embedder, "model_class", None),
+            getattr(embedder, "pooling_method", None),
+            getattr(embedder, "batch_size", None),
+            getattr(embedder, "passage_max_length", None),
         ):
             raise ValueError("embedding 配置与索引不一致")
         chunk_data = (out_dir / "dense_chunks.jsonl").read_bytes()
@@ -172,6 +194,6 @@ class DenseIndex:
         query_vector = _unit_vectors(self.embedder.encode([query]), 1)[0]
         if query_vector.shape[0] != self.vectors.shape[1]:
             raise ValueError("查询 embedding 维度与索引不一致")
-        scores = self.vectors @ query_vector
+        scores = np.dot(self.vectors, query_vector)
         indices = np.argsort(-scores, kind="stable")[:k]
         return [Evidence(self.chunks[int(i)], float(scores[i]), ()) for i in indices]

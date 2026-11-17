@@ -7,6 +7,7 @@ import io
 import tempfile
 import types
 import unittest
+import warnings
 from contextlib import redirect_stdout
 from dataclasses import asdict
 from io import StringIO
@@ -69,6 +70,23 @@ class DenseAnswerTests(unittest.TestCase):
         self.assertEqual(manifest["embedding_revision"], "fixture-v1")
         self.assertEqual(manifest["normalization"], "l2")
 
+    def test_search_does_not_emit_numeric_warnings_for_finite_vectors(self) -> None:
+        rng = np.random.default_rng(0)
+        vectors = rng.normal(size=(555, 1024)).astype(np.float32)
+        query = vectors[0].copy()
+
+        class WideEmbedder:
+            def encode(self, texts: list[str]) -> np.ndarray:
+                return query[None, :]
+
+        index = DenseIndex([self.chunks[0]] * len(vectors), vectors, WideEmbedder())
+        with warnings.catch_warnings(record=True) as observed:
+            warnings.simplefilter("always", RuntimeWarning)
+            results = index.search("attention", 1)
+        self.assertEqual(len(results), 1)
+        self.assertTrue(np.isfinite(results[0].score))
+        self.assertEqual(observed, [])
+
     def test_rejects_different_embedding_model_on_load(self) -> None:
         DenseIndex.build(self.chunks, self.embedder, self.out)
 
@@ -87,6 +105,7 @@ class DenseAnswerTests(unittest.TestCase):
 
     def test_pinned_bge_snapshot_uses_explicit_model_class(self) -> None:
         called: dict = {}
+        downloaded: dict = {}
 
         class FakeModel:
             def encode(self, texts: list[str]) -> dict:
@@ -103,13 +122,20 @@ class DenseAnswerTests(unittest.TestCase):
         modules = {
             "FlagEmbedding": types.SimpleNamespace(FlagAutoModel=FakeAutoModel),
             "huggingface_hub": types.SimpleNamespace(
-                snapshot_download=lambda **kwargs: "/cache/snapshots/" + "a" * 40
+                snapshot_download=lambda **kwargs: (
+                    downloaded.update(kwargs) or "/cache/snapshots/" + "a" * 40
+                )
             ),
         }
         with patch.dict("sys.modules", modules):
             embedder = FlagEmbedder("BAAI/bge-m3", revision="a" * 40, device="cpu")
+            with self.assertRaisesRegex(ValueError, "长度"):
+                FlagEmbedder("BAAI/bge-m3", passage_max_length=0)
         self.assertEqual(embedder.revision, "a" * 40)
         self.assertEqual(called["model_class"], "encoder-only-m3")
+        self.assertEqual(called["passage_max_length"], 2048)
+        self.assertEqual(called["batch_size"], 8)
+        self.assertIn("onnx/*", downloaded["ignore_patterns"])
         self.assertEqual(embedder.encode(["中文"]).shape, (1, 2))
 
     def test_empty_evidence_refuses_without_calling_client(self) -> None:
