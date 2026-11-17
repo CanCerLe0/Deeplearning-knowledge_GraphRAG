@@ -26,6 +26,7 @@ logs/
 
 # Local planning artifacts; publish approved documents directly in docs/
 docs/superpowers/
+docs/新对话启动说明.md
 
 # Editor and OS files
 .DS_Store

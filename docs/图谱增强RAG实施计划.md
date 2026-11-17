@@ -54,7 +54,7 @@
 | `data/sample/` | 自写的小型双语 Markdown 文档；仅此示例语料进 Git |
 | `data/eval/` | 自写题目与人工核查的中英文替代证据组，不含教材正文 |
 | `tests/` | 无网络、无真实模型的单元和端到端小样本测试 |
-| `docs/图谱增强RAG项目设计草案.md`、`docs/图谱增强RAG实施计划.md`、`docs/双语本地Markdown设计补充.md`、`docs/results.md`、`docs/data-sources.md` | 设计、实施计划、补充设计、实验与来源 |
+| `docs/图谱增强RAG项目设计草案.md`、`docs/图谱增强RAG实施计划.md`、`docs/双语本地Markdown设计补充.md`、`docs/results.md`、`docs/数据来源.md` | 设计、实施计划、补充设计、实验与来源 |
 
 ## Shared Interfaces
 
@@ -91,7 +91,7 @@
 
 ### Task 3: 带来源的概念图（第 3–4 天）
 
-**Files:** `src/kgrag/graph.py`、`src/kgrag/cli.py`、`tests/test_graph.py`、`docs/data-sources.md`。
+**Files:** `src/kgrag/graph.py`、`src/kgrag/cli.py`、`tests/test_graph.py`、`docs/数据来源.md`。
 
 **Interfaces:** 产出 `build_graph(chunks: list[Chunk], client: ChatClient, out_dir: Path) -> GraphIndex`；`GraphIndex.neighbors(concept: str, max_hops: int) -> list[GraphPath]`；`GraphPath` 含节点、关系和证据片段 ID。
 
@@ -139,7 +139,7 @@
 
 ### Task 7: 演示与公开仓库材料（第 12–13 天）
 
-**Files:** `app.py`、`README.md`、`.env.example`、`LICENSE`、`docs/results.md`、`docs/data-sources.md`、`tests/test_release_fixture.py`。
+**Files:** `app.py`、`README.md`、`.env.example`、`LICENSE`、`docs/results.md`、`docs/数据来源.md`、`tests/test_release_fixture.py`。
 
 **Interfaces:** UI 调用已有 `retrieve` 与 `generate_answer`，展示三路答案、引用原文、被使用的局部概念路径；不在 UI 中复制检索算法。
 
