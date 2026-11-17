@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import io
+import os
 import tempfile
 import types
 import unittest
@@ -280,6 +281,28 @@ class DenseAnswerTests(unittest.TestCase):
     def test_current_deepseek_model_is_the_default(self) -> None:
         client = DeepSeekChatClient(api_key="fixture-key")
         self.assertEqual(client.model, "deepseek-flash")
+
+    def test_deepseek_client_reads_ignored_local_env_file(self) -> None:
+        (self.out / ".env").write_text("# Local secret\nDEEPSEEK_API_KEY=fixture-local-key\n")
+        original_directory = Path.cwd()
+        try:
+            os.chdir(self.out)
+            with patch.dict(os.environ, {"DEEPSEEK_API_KEY": ""}):
+                client = DeepSeekChatClient()
+        finally:
+            os.chdir(original_directory)
+        self.assertEqual(client.api_key, "fixture-local-key")
+
+    def test_deepseek_client_prefers_environment_over_local_env_file(self) -> None:
+        (self.out / ".env").write_text("DEEPSEEK_API_KEY=fixture-local-key\n")
+        original_directory = Path.cwd()
+        try:
+            os.chdir(self.out)
+            with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "fixture-env-key"}):
+                client = DeepSeekChatClient()
+        finally:
+            os.chdir(original_directory)
+        self.assertEqual(client.api_key, "fixture-env-key")
 
 
 if __name__ == "__main__":

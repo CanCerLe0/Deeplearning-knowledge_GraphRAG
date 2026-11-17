@@ -22,20 +22,22 @@ python -m kgrag.cli ingest --sources config/sources.yaml
 
 ## 向量索引与中文问答
 
-安装可选的本地 embedding 依赖后构建索引；默认模型为 `BAAI/bge-m3`，批量大小为 8，片段最大长度为 2048 token。可用 `--batch-size` 和 `--passage-max-length` 调整，并在 `build-index` 与 `ask` 中使用相同设置；索引会记录这些设置与实际模型版本。模型首次使用时可能需要下载。若已下载模型，也可用 `--embedding-model` 指向本地目录；正式实验建议用 `--embedding-revision` 固定版本。可用 `--device mps` 在支持的 Mac 上运行本地 embedding。生成答案默认使用 DeepSeek `deepseek-flash` 的非思考模式，需要设置环境变量 `DEEPSEEK_API_KEY`；索引构建不需要密钥。以下命令在当前终端隐藏密钥输入，避免将密钥写入命令历史：
+安装可选的本地 embedding 依赖后构建索引；默认模型为 `BAAI/bge-m3`，批量大小为 8，片段最大长度为 2048 token。可用 `--batch-size` 和 `--passage-max-length` 调整，并在 `build-index` 与 `ask` 中使用相同设置；索引会记录这些设置与实际模型版本。模型首次使用时可能需要下载。若已下载模型，也可用 `--embedding-model` 指向本地目录；正式实验建议用 `--embedding-revision` 固定版本。可用 `--device mps` 在支持的 Mac 上运行本地 embedding。生成答案默认使用 DeepSeek `deepseek-flash` 的非思考模式。首次在项目根目录复制密钥模板并限制权限，再用本地编辑器在 `.env` 的 `DEEPSEEK_API_KEY=` 后填写真实密钥：
+
+```bash
+cp .env.example .env
+chmod 600 .env
+```
+
+此后从项目根目录运行，无须重复输入密钥；`build-index` 不需要密钥：
 
 ```bash
 python -m pip install -e '.[embedding]'
 python -m kgrag.cli build-index --chunks data/index/chunks.jsonl
-printf 'DeepSeek API Key: '
-IFS= read -rs DEEPSEEK_API_KEY
-printf '\n'
-export DEEPSEEK_API_KEY
 python -m kgrag.cli ask "注意力机制如何使用查询和键？"
-unset DEEPSEEK_API_KEY
 ```
 
-如需保存在本机，可将密钥写入仓库根目录的 `.env` 并限制文件权限；`.gitignore` 已排除 `.env`，但程序不会自动读取它，运行前仍须将其加载到环境变量。`.env.example` 仅保留空字段，不要填写真实密钥。提交前用 `git status` 检查暂存文件，切勿强制添加密钥文件；若密钥已被推送，应立即在服务商处撤销并更换。
+`ask` 自动读取项目根目录的 `.env`，已有环境变量优先；`.env.example` 仅保留空字段，不要填写真实密钥。`.gitignore` 已排除 `.env`。提交前用 `git status` 检查暂存文件，切勿强制添加密钥文件；若密钥已被推送，应立即在服务商处撤销并更换。
 
 `ask` 输出逐项引用片段 ID 的中文回答、证据语言与原文链接，以及模型和生成参数。程序校验引用 ID 和引用标记；引用是否真正支持论断仍需人工核查。无证据或无有效引用时返回“证据不足”。模型显存不足时可用 `--embedding-model` 选择较小的多语言 FlagEmbedding 模型，同时用 `--embedding-class` 指定模型类型，必要时用 `--pooling-method` 指定池化方式，并用同一配置重建索引；三种计划中的检索方案须共用该索引。
 

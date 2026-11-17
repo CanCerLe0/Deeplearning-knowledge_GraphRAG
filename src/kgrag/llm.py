@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from typing import Protocol
 from urllib.request import Request, urlopen
 
@@ -12,12 +13,28 @@ class ChatClient(Protocol):
     def complete_json(self, messages: list[dict]) -> dict: ...
 
 
+def _local_api_key() -> str | None:
+    env_file = Path.cwd() / ".env"
+    try:
+        lines = env_file.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return None
+    for line in lines:
+        name, separator, value = line.partition("=")
+        if separator and name.strip() == "DEEPSEEK_API_KEY":
+            value = value.strip()
+            if len(value) >= 2 and value[0] in "\"'" and value[-1] == value[0]:
+                value = value[1:-1]
+            return value or None
+    return None
+
+
 class DeepSeekChatClient:
     def __init__(
         self, *, model: str = "deepseek-flash", base_url: str = "https://api.deepseek.com",
         api_key: str | None = None, temperature: float = 0.0, max_tokens: int = 1024,
     ) -> None:
-        self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
+        self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY") or _local_api_key()
         if not self.api_key:
             raise RuntimeError("请设置 DEEPSEEK_API_KEY")
         self.model = model
