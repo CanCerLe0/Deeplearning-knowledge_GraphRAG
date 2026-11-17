@@ -24,6 +24,9 @@ data/runs/
 models/
 logs/
 
+# Local planning artifacts; publish approved documents directly in docs/
+docs/superpowers/
+
 # Editor and OS files
 .DS_Store
 .idea/

@@ -1,14 +1,12 @@
 # 图谱增强 RAG 知识库 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** 在两周、每天 3–4 小时内，以本地中英文 Markdown 构建可扩展的深度学习知识库，验证关系感知的多跳图谱检索，并发布到作者个人 GitHub 公开仓库。
 
 **Architecture:** 来源清单固定 `d2l-zh`、`d2l-en` 的提交和文件哈希，先下载中英文 Markdown 到本地，再离线解析为带稳定 ID 和语言元数据的片段；同一批片段同时进入本地统一双语向量索引和带原文证据的概念图。本地完成召回和重排，外接大模型承担关系候选抽取与中文答案生成。三种检索器共用 embedding、生成模型、提示词和上下文预算；评测脚本冻结开发/测试题与运行配置，网页展示答案、原文语言、引用和实际检索路径。
 
 **Tech Stack:** Python 3.11+；Pydantic、PyYAML、Markdown 解析器、NumPy、NetworkX、FlagEmbedding（优先验证本地 BGE-M3，显存不足时配置较小的多语言模型）、可配置的 DeepSeek 兼容 Chat Completions API、Streamlit、pytest。依赖在实现时锁定；索引为本地 JSON/NumPy 文件，无需数据库服务。
 
-**Spec:** [图谱增强 RAG 项目设计草案](./图谱增强RAG项目设计草案.md) 与 [双语本地 Markdown 设计补充](./superpowers/specs/2026-11-15-bilingual-local-markdown-rag-design.md)。两份设计与本计划已位于仓库根目录下的 `docs/`，随代码一同版本化。
+**Spec:** [图谱增强 RAG 项目设计草案](./图谱增强RAG项目设计草案.md) 与 [双语本地 Markdown 设计补充](./双语本地Markdown设计补充.md)。两份设计与本计划已位于仓库根目录下的 `docs/`，随代码一同版本化。
 
 ## Global Constraints
 
@@ -56,7 +54,7 @@
 | `data/sample/` | 自写的小型双语 Markdown 文档；仅此示例语料进 Git |
 | `data/eval/` | 自写题目与人工核查的中英文替代证据组，不含教材正文 |
 | `tests/` | 无网络、无真实模型的单元和端到端小样本测试 |
-| `docs/图谱增强RAG项目设计草案.md`、`docs/图谱增强RAG实施计划.md`、`docs/superpowers/specs/2026-11-15-bilingual-local-markdown-rag-design.md`、`docs/results.md`、`docs/data-sources.md` | 设计、实施计划、补充设计、实验与来源 |
+| `docs/图谱增强RAG项目设计草案.md`、`docs/图谱增强RAG实施计划.md`、`docs/双语本地Markdown设计补充.md`、`docs/results.md`、`docs/data-sources.md` | 设计、实施计划、补充设计、实验与来源 |
 
 ## Shared Interfaces
 

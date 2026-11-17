@@ -4,7 +4,7 @@
 
 This repository is being built as a local graph-enhanced RAG experiment using Chinese and English Markdown from *Dive into Deep Learning*. It will compare dense retrieval, unweighted one-hop graph expansion, and relation-aware multi-hop retrieval, with source passages grounding answers in Chinese.
 
-The [implementation plan](docs/图谱增强RAG实施计划.md), [design](docs/图谱增强RAG项目设计草案.md), and [bilingual design supplement](docs/superpowers/specs/2026-11-15-bilingual-local-markdown-rag-design.md) describe the research question, data workflow, and acceptance criteria.
+The [implementation plan](docs/图谱增强RAG实施计划.md), [design](docs/图谱增强RAG项目设计草案.md), and [bilingual design supplement](docs/双语本地Markdown设计补充.md) describe the research question, data workflow, and acceptance criteria.
 
 The repository now contains project documents, original bilingual samples, pinned textbook downloads, offline Markdown ingestion, a unified bilingual vector index, and a source-grounded Chinese answer baseline. `fetch` downloads and verifies listed files; `ingest` chunks them offline; `build-index` creates a local NumPy cosine index with a local embedding model; `ask` retrieves source passages and uses a configurable DeepSeek-compatible API to generate a Chinese answer. Graph construction, graph expansion, relation-aware reranking, and evaluation are still pending. Third-party textbook files and generated indexes stay local and are not committed.
 
