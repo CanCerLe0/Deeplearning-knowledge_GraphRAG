@@ -6,18 +6,19 @@ This repository is being built as a local graph-enhanced RAG experiment using Ch
 
 The [implementation plan](docs/图谱增强RAG实施计划.md), [design](docs/图谱增强RAG项目设计草案.md), and [bilingual design supplement](docs/superpowers/specs/2026-11-15-bilingual-local-markdown-rag-design.md) describe the research question, data workflow, and acceptance criteria.
 
-The repository now contains project documents, original bilingual samples, and offline Markdown ingestion code. The `ingest` command reads the source list, verifies SHA256 hashes of locally downloaded textbook files, chunks them by section, and writes `data/index/chunks.jsonl` plus a local build manifest. Automatic textbook download, vector indexing, graph construction, retrieval, reranking, generation, and evaluation are still pending. Third-party textbook files and generated chunks stay local and are not committed.
+The repository now contains project documents, original bilingual samples, and code for pinned textbook downloads and offline Markdown ingestion. The `fetch` command downloads and verifies the textbook files in the source manifest. The `ingest` command verifies local files offline, chunks them by section, and writes `data/index/chunks.jsonl` plus a local build manifest. Vector indexing, graph construction, retrieval, reranking, generation, and evaluation are still pending. Third-party textbook files and generated chunks stay local and are not committed.
 
-## Local ingestion
+## Download and local ingestion
 
-First place the Chinese and English textbook Markdown listed in the source manifest under the corresponding paths in `data/raw/d2l-zh/` and `data/raw/d2l-en/`. The original sample files are already included. Then run:
+The original sample files are already included. Run these commands to download the listed Chinese and English textbook files, then ingest them offline:
 
 ```bash
 python -m pip install -e .
+python -m kgrag.cli fetch --sources config/sources.yaml
 python -m kgrag.cli ingest --sources config/sources.yaml
 ```
 
-Ingestion stops if a file is missing or its SHA256 does not match. Character counts are the default chunking budget; `build_corpus` also accepts a token counter for the selected model. See the [build issue log](docs/RAG构建问题与解决方案.md) for problems and resolutions.
+`fetch` reuses locally verified files without network access and stops if an existing file or a download fails SHA256 verification. `ingest` does not access the network and also stops if a file is missing or its hash does not match. Character counts are the default chunking budget; `build_corpus` also accepts a token counter for the selected model. See the [build issue log](docs/RAG构建问题与解决方案.md) for problems and resolutions.
 
 The project's original code is licensed under [MIT](LICENSE). That license does not cover the *Dive into Deep Learning* textbook content; consult the relevant versions of the [Chinese repository](https://github.com/d2l-ai/d2l-zh) and [English repository](https://github.com/d2l-ai/d2l-en) before using that content.
 
