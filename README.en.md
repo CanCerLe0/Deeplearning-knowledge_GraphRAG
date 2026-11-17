@@ -22,7 +22,7 @@ python -m kgrag.cli ingest --sources config/sources.yaml
 
 ## Vector index and Chinese answers
 
-Install the optional local embedding dependencies before building the index. The default model is `BAAI/bge-m3`. Its first use may download model files; the index records the resolved model revision. You can point `--embedding-model` to a local model directory, and should pin `--embedding-revision` for a formal experiment. Answer generation requires `DEEPSEEK_API_KEY`; index building does not.
+Install the optional local embedding dependencies before building the index. The default model is `BAAI/bge-m3`. Its first use may download model files; the index records the resolved model revision. You can point `--embedding-model` to a local model directory, and should pin `--embedding-revision` for a formal experiment. Answer generation defaults to DeepSeek `deepseek-flash` in non-thinking mode and requires `DEEPSEEK_API_KEY`; index building does not.
 
 ```bash
 python -m pip install -e '.[embedding]'
@@ -31,7 +31,7 @@ export DEEPSEEK_API_KEY=your_key_here
 python -m kgrag.cli ask "注意力机制如何使用查询和键？"
 ```
 
-`ask` outputs a Chinese answer, valid passage IDs, evidence languages and source links, plus model and generation settings. It returns an insufficient-evidence response when there is no evidence or no valid citation. If model memory is limited, select a smaller multilingual FlagEmbedding model with `--embedding-model` and rebuild the index with that same model; the three planned retrieval modes must share this index.
+`ask` outputs a Chinese answer with passage IDs cited for individual claims, evidence languages and source links, plus model and generation settings. The program checks citation IDs and markers; whether a passage actually supports a claim still requires human review. It returns an insufficient-evidence response when there is no evidence or no valid citation. If model memory is limited, select a smaller multilingual FlagEmbedding model with `--embedding-model`, specify its model type with `--embedding-class` and, if needed, its pooling method with `--pooling-method`; rebuild the index with the same configuration. The three planned retrieval modes must share this index.
 
 The project's original code is licensed under [MIT](LICENSE). That license does not cover the *Dive into Deep Learning* textbook content; consult the relevant versions of the [Chinese repository](https://github.com/d2l-ai/d2l-zh) and [English repository](https://github.com/d2l-ai/d2l-en) before using that content.
 

@@ -22,7 +22,7 @@ python -m kgrag.cli ingest --sources config/sources.yaml
 
 ## 向量索引与中文问答
 
-安装可选的本地 embedding 依赖后构建索引；默认模型为 `BAAI/bge-m3`。模型首次使用时可能需要下载，索引会记录实际模型版本。若已下载模型，也可用 `--embedding-model` 指向本地目录；正式实验建议用 `--embedding-revision` 固定版本。生成答案需要设置 `DEEPSEEK_API_KEY`，索引构建不需要密钥。
+安装可选的本地 embedding 依赖后构建索引；默认模型为 `BAAI/bge-m3`。模型首次使用时可能需要下载，索引会记录实际模型版本。若已下载模型，也可用 `--embedding-model` 指向本地目录；正式实验建议用 `--embedding-revision` 固定版本。生成答案默认使用 DeepSeek `deepseek-flash` 的非思考模式，需要设置 `DEEPSEEK_API_KEY`；索引构建不需要密钥。
 
 ```bash
 python -m pip install -e '.[embedding]'
@@ -31,7 +31,7 @@ export DEEPSEEK_API_KEY=your_key_here
 python -m kgrag.cli ask "注意力机制如何使用查询和键？"
 ```
 
-`ask` 输出中文回答、有效片段 ID、证据语言与原文链接，以及模型和生成参数。无证据或无有效引用时返回“证据不足”。模型显存不足时可用 `--embedding-model` 选择较小的多语言 FlagEmbedding 模型，并用同一模型重建索引；三种计划中的检索方案须共用该索引。
+`ask` 输出逐项引用片段 ID 的中文回答、证据语言与原文链接，以及模型和生成参数。程序校验引用 ID 和引用标记；引用是否真正支持论断仍需人工核查。无证据或无有效引用时返回“证据不足”。模型显存不足时可用 `--embedding-model` 选择较小的多语言 FlagEmbedding 模型，同时用 `--embedding-class` 指定模型类型，必要时用 `--pooling-method` 指定池化方式，并用同一配置重建索引；三种计划中的检索方案须共用该索引。
 
 本项目自写代码使用 [MIT 许可](LICENSE)。该许可不覆盖《动手学深度学习》教材正文；使用教材内容前请查看[中文仓库](https://github.com/d2l-ai/d2l-zh)和[英文仓库](https://github.com/d2l-ai/d2l-en)对应版本的许可说明。
 

@@ -7,11 +7,12 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from .answer import generate_answer
+from .answer import REFUSAL, generate_answer
 from .embed import DenseIndex, FlagEmbedder, load_chunks
 from .fetch import download_url, fetch_sources
 from .ingest import build_corpus, load_sources
 from .llm import DeepSeekChatClient
+from .schema import Answer
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -34,13 +35,15 @@ def main(argv: list[str] | None = None) -> int:
     ask.add_argument("question")
     ask.add_argument("--index-dir", type=Path, default=Path("data/index/dense"))
     ask.add_argument("--top-k", type=int, default=5)
-    ask.add_argument("--chat-model", default="deepseek-chat")
+    ask.add_argument("--chat-model", default="deepseek-flash")
     ask.add_argument("--base-url", default="https://api.deepseek.com")
     ask.add_argument("--temperature", type=float, default=0.0)
     ask.add_argument("--max-output-tokens", type=int, default=1024)
     for command in (build_index, ask):
         command.add_argument("--embedding-model", default="BAAI/bge-m3")
         command.add_argument("--embedding-revision", default="main")
+        command.add_argument("--embedding-class", default=None)
+        command.add_argument("--pooling-method", default=None)
         command.add_argument("--device", default=None)
     args = parser.parse_args(argv)
 
@@ -52,7 +55,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command in ("build-index", "ask"):
         embedder = FlagEmbedder(
-            model_id=args.embedding_model, revision=args.embedding_revision, device=args.device
+            model_id=args.embedding_model, revision=args.embedding_revision,
+            model_class=args.embedding_class, pooling_method=args.pooling_method,
+            device=args.device,
         )
         if args.command == "build-index":
             chunks = load_chunks(args.chunks)
@@ -62,11 +67,18 @@ def main(argv: list[str] | None = None) -> int:
 
         index = DenseIndex.load(args.index_dir, embedder)
         evidence = index.search(args.question, args.top_k)
-        client = DeepSeekChatClient(
-            model=args.chat_model, base_url=args.base_url,
-            temperature=args.temperature, max_tokens=args.max_output_tokens,
-        )
-        answer = generate_answer(args.question, evidence, client)
+        if evidence:
+            client = DeepSeekChatClient(
+                model=args.chat_model, base_url=args.base_url,
+                temperature=args.temperature, max_tokens=args.max_output_tokens,
+            )
+            answer = generate_answer(args.question, evidence, client)
+            generation_model_version = client.last_model
+            usage = client.last_usage
+        else:
+            answer = Answer(REFUSAL, [])
+            generation_model_version = None
+            usage = {}
         result = {
             "question": args.question,
             "answer": {
@@ -87,13 +99,15 @@ def main(argv: list[str] | None = None) -> int:
             "run_config": {
                 "embedding_model_id": embedder.model_id,
                 "embedding_revision": embedder.revision,
-                "generation_model_id": client.model,
-                "generation_model_version": client.last_model,
-                "temperature": client.temperature,
-                "max_output_tokens": client.max_tokens,
+                "embedding_model_class": getattr(embedder, "model_class", None),
+                "embedding_pooling_method": getattr(embedder, "pooling_method", None),
+                "generation_model_id": args.chat_model,
+                "generation_model_version": generation_model_version,
+                "temperature": args.temperature,
+                "max_output_tokens": args.max_output_tokens,
                 "top_k": args.top_k,
             },
-            "usage": client.last_usage,
+            "usage": usage,
         }
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0

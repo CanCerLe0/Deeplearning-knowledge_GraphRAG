@@ -14,7 +14,7 @@ class ChatClient(Protocol):
 
 class DeepSeekChatClient:
     def __init__(
-        self, *, model: str = "deepseek-chat", base_url: str = "https://api.deepseek.com",
+        self, *, model: str = "deepseek-flash", base_url: str = "https://api.deepseek.com",
         api_key: str | None = None, temperature: float = 0.0, max_tokens: int = 1024,
     ) -> None:
         self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
@@ -35,6 +35,8 @@ class DeepSeekChatClient:
             "max_tokens": self.max_tokens,
             "response_format": {"type": "json_object"},
         }
+        if self.base_url.startswith("https://api.deepseek.com"):
+            payload["thinking"] = {"type": "disabled"}
         request = Request(
             f"{self.base_url}/chat/completions",
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),

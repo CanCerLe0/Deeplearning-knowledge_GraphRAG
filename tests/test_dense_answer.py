@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import io
 import tempfile
+import types
 import unittest
 from contextlib import redirect_stdout
 from dataclasses import asdict
@@ -15,7 +16,7 @@ from unittest.mock import patch
 import numpy as np
 
 from kgrag.answer import generate_answer
-from kgrag.embed import DenseIndex
+from kgrag.embed import DenseIndex, FlagEmbedder
 from kgrag.llm import DeepSeekChatClient
 from kgrag.schema import Chunk
 
@@ -77,6 +78,40 @@ class DenseAnswerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "embedding"):
             DenseIndex.load(self.out, OtherEmbedder())
 
+    def test_rejects_mixed_index_files_even_when_dimensions_match(self) -> None:
+        DenseIndex.build(self.chunks, self.embedder, self.out)
+        chunks_path = self.out / "dense_chunks.jsonl"
+        chunks_path.write_text(chunks_path.read_text().replace("source-en", "source-other"))
+        with self.assertRaisesRegex(ValueError, "索引"):
+            DenseIndex.load(self.out, self.embedder)
+
+    def test_pinned_bge_snapshot_uses_explicit_model_class(self) -> None:
+        called: dict = {}
+
+        class FakeModel:
+            def encode(self, texts: list[str]) -> dict:
+                return {"dense_vecs": np.asarray([[1.0, 2.0] for _ in texts])}
+
+        class FakeAutoModel:
+            @staticmethod
+            def from_finetuned(path: str, **kwargs: object) -> FakeModel:
+                called.update(path=path, **kwargs)
+                if kwargs.get("model_class") != "encoder-only-m3":
+                    raise AssertionError("snapshot path does not identify the model class")
+                return FakeModel()
+
+        modules = {
+            "FlagEmbedding": types.SimpleNamespace(FlagAutoModel=FakeAutoModel),
+            "huggingface_hub": types.SimpleNamespace(
+                snapshot_download=lambda **kwargs: "/cache/snapshots/" + "a" * 40
+            ),
+        }
+        with patch.dict("sys.modules", modules):
+            embedder = FlagEmbedder("BAAI/bge-m3", revision="a" * 40, device="cpu")
+        self.assertEqual(embedder.revision, "a" * 40)
+        self.assertEqual(called["model_class"], "encoder-only-m3")
+        self.assertEqual(embedder.encode(["中文"]).shape, (1, 2))
+
     def test_empty_evidence_refuses_without_calling_client(self) -> None:
         class NoCallClient:
             def complete_json(self, messages: list[dict]) -> dict:
@@ -94,19 +129,49 @@ class DenseAnswerTests(unittest.TestCase):
             def complete_json(self, messages: list[dict]) -> dict:
                 self.messages = messages
                 return {
-                    "answer": "查询与键计算相关性。",
+                    "answer": "查询与键计算相关性。[en]",
                     "citation_chunk_ids": ["en", "invented", "en"],
                 }
 
         client = FakeClient()
         answer = generate_answer("注意力和查询如何关联？", evidence, client)
-        self.assertEqual(answer.text, "查询与键计算相关性。")
+        self.assertEqual(answer.text, "查询与键计算相关性。[en]")
         self.assertEqual(answer.citation_chunk_ids, ["en"])
         prompt = json.dumps(client.messages, ensure_ascii=False)
         self.assertIn("中文", prompt)
         self.assertIn("en", prompt)
         self.assertIn("Attention uses a query to score keys.", prompt)
         self.assertIn("language", prompt)
+
+    def test_rejects_invalid_inline_citation(self) -> None:
+        index = DenseIndex.build(self.chunks, self.embedder, self.out)
+        evidence = index.search("注意力和查询如何关联？", 1)
+
+        class FakeClient:
+            def complete_json(self, messages: list[dict]) -> dict:
+                return {
+                    "answer": "查询与键计算相关性。[en] 无依据的结论。[invented]",
+                    "citation_chunk_ids": ["en", "invented"],
+                }
+
+        answer = generate_answer("注意力和查询如何关联？", evidence, FakeClient())
+        self.assertEqual(answer.citation_chunk_ids, [])
+        self.assertIn("证据不足", answer.text)
+
+    def test_rejects_uncited_second_claim(self) -> None:
+        index = DenseIndex.build(self.chunks, self.embedder, self.out)
+        evidence = index.search("注意力和查询如何关联？", 1)
+
+        class FakeClient:
+            def complete_json(self, messages: list[dict]) -> dict:
+                return {
+                    "answer": "查询与键计算相关性。[en] 这还能保证任意模型收敛。",
+                    "citation_chunk_ids": ["en"],
+                }
+
+        answer = generate_answer("注意力和查询如何关联？", evidence, FakeClient())
+        self.assertEqual(answer.citation_chunk_ids, [])
+        self.assertIn("证据不足", answer.text)
 
     def test_cli_build_and_ask_with_fake_adapters(self) -> None:
         from kgrag.cli import main
@@ -127,7 +192,7 @@ class DenseAnswerTests(unittest.TestCase):
                 self.last_usage: dict = {}
 
             def complete_json(self, messages: list[dict]) -> dict:
-                return {"answer": "查询与键计算相关性。", "citation_chunk_ids": ["en"]}
+                return {"answer": "查询与键计算相关性。[en]", "citation_chunk_ids": ["en"]}
 
         output = StringIO()
         with patch("kgrag.cli.FlagEmbedder", return_value=self.embedder), patch(
@@ -142,6 +207,23 @@ class DenseAnswerTests(unittest.TestCase):
         self.assertEqual(result["evidence"][0]["language"], "en")
         self.assertEqual(result["evidence"][0]["url"], "https://example.org/en#L1-L2")
         self.assertEqual(result["run_config"]["generation_model_version"], "fake-chat-v1")
+
+    def test_cli_no_evidence_refuses_without_api_client(self) -> None:
+        from kgrag.cli import main
+
+        DenseIndex.build(self.chunks, self.embedder, self.out)
+        output = StringIO()
+
+        def no_client(**kwargs: object) -> object:
+            raise AssertionError("no evidence must not create the API client")
+
+        with patch("kgrag.cli.FlagEmbedder", return_value=self.embedder), patch(
+            "kgrag.cli.DeepSeekChatClient", no_client
+        ), redirect_stdout(output):
+            self.assertEqual(main([
+                "ask", "注意力和查询如何关联？", "--index-dir", str(self.out), "--top-k", "0"
+            ]), 0)
+        self.assertIn("证据不足", json.loads(output.getvalue())["answer"]["text"])
 
     def test_deepseek_client_sends_json_mode_and_records_usage(self) -> None:
         sent = {}
@@ -165,8 +247,13 @@ class DenseAnswerTests(unittest.TestCase):
         self.assertEqual(sent["authorization"], "Bearer fixture-key")
         self.assertEqual(sent["body"]["model"], "test-chat")
         self.assertEqual(sent["body"]["response_format"], {"type": "json_object"})
+        self.assertEqual(sent["body"]["thinking"], {"type": "disabled"})
         self.assertEqual(client.last_usage, {"total_tokens": 17})
         self.assertEqual(client.last_model, "test-chat-v1")
+
+    def test_current_deepseek_model_is_the_default(self) -> None:
+        client = DeepSeekChatClient(api_key="fixture-key")
+        self.assertEqual(client.model, "deepseek-flash")
 
 
 if __name__ == "__main__":
