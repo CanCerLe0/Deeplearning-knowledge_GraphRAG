@@ -6,7 +6,7 @@
 
 项目的[实施计划](docs/图谱增强RAG实施计划.md)、[设计草案](docs/图谱增强RAG项目设计草案.md)和[双语设计补充](docs/superpowers/specs/2026-11-15-bilingual-local-markdown-rag-design.md)说明了研究问题、数据流程与验收标准。
 
-目前仓库提供项目文档、自写中英文示例文本，以及固定版本教材下载和离线 Markdown 入库代码。`fetch` 命令按来源清单下载并校验教材文件；`ingest` 命令离线校验文件、按小节分片，并在本地生成 `data/index/chunks.jsonl` 和构建清单。向量索引、图谱构建、召回、重排、生成和评测仍待实现。第三方教材文件与生成的片段仅保存在本地，不提交到此仓库。
+目前仓库提供项目文档、自写中英文示例文本、固定版本教材下载、离线 Markdown 入库、统一双语向量索引和基于原文证据的中文基线回答。`fetch` 按来源清单下载并校验文件；`ingest` 离线分片；`build-index` 使用本地 embedding 构建 NumPy 余弦索引；`ask` 检索原文片段并调用可配置的 DeepSeek 兼容接口生成中文回答。图谱构建、图扩展、关系重排和评测仍待实现。第三方教材文件与生成的索引仅保存在本地，不提交到此仓库。
 
 ## 下载与本地入库
 
@@ -19,6 +19,19 @@ python -m kgrag.cli ingest --sources config/sources.yaml
 ```
 
 `fetch` 会复用哈希校验通过的本地文件，此时无需联网；现有文件或下载内容的 SHA256 不匹配时会中止。`ingest` 不访问网络，文件缺失或哈希不符时也会中止。默认以字符数分片；`build_corpus` 也支持传入实际模型的 token 计数器。问题和处理过程见[构建问题记录](docs/RAG构建问题与解决方案.md)。
+
+## 向量索引与中文问答
+
+安装可选的本地 embedding 依赖后构建索引；默认模型为 `BAAI/bge-m3`。模型首次使用时可能需要下载，索引会记录实际模型版本。若已下载模型，也可用 `--embedding-model` 指向本地目录；正式实验建议用 `--embedding-revision` 固定版本。生成答案需要设置 `DEEPSEEK_API_KEY`，索引构建不需要密钥。
+
+```bash
+python -m pip install -e '.[embedding]'
+python -m kgrag.cli build-index --chunks data/index/chunks.jsonl
+export DEEPSEEK_API_KEY=your_key_here
+python -m kgrag.cli ask "注意力机制如何使用查询和键？"
+```
+
+`ask` 输出中文回答、有效片段 ID、证据语言与原文链接，以及模型和生成参数。无证据或无有效引用时返回“证据不足”。模型显存不足时可用 `--embedding-model` 选择较小的多语言 FlagEmbedding 模型，并用同一模型重建索引；三种计划中的检索方案须共用该索引。
 
 本项目自写代码使用 [MIT 许可](LICENSE)。该许可不覆盖《动手学深度学习》教材正文；使用教材内容前请查看[中文仓库](https://github.com/d2l-ai/d2l-zh)和[英文仓库](https://github.com/d2l-ai/d2l-en)对应版本的许可说明。
 

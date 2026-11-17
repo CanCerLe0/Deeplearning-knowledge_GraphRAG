@@ -1,4 +1,4 @@
-"""入库阶段使用的来源、文档和片段数据结构。"""
+"""来源、片段、检索证据和回答的数据结构。"""
 
 from __future__ import annotations
 
@@ -66,3 +66,20 @@ class Chunk:
     line_start: int
     line_end: int
     url: str | None
+
+
+@dataclass(frozen=True)
+class Evidence:
+    """检索到的原文片段及其得分和图路径。"""
+
+    chunk: Chunk
+    score: float
+    path: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Answer:
+    """中文回答及实际证据片段 ID。"""
+
+    text: str
+    citation_chunk_ids: list[str]

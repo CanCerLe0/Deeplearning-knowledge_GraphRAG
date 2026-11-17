@@ -6,7 +6,7 @@ This repository is being built as a local graph-enhanced RAG experiment using Ch
 
 The [implementation plan](docs/图谱增强RAG实施计划.md), [design](docs/图谱增强RAG项目设计草案.md), and [bilingual design supplement](docs/superpowers/specs/2026-11-15-bilingual-local-markdown-rag-design.md) describe the research question, data workflow, and acceptance criteria.
 
-The repository now contains project documents, original bilingual samples, and code for pinned textbook downloads and offline Markdown ingestion. The `fetch` command downloads and verifies the textbook files in the source manifest. The `ingest` command verifies local files offline, chunks them by section, and writes `data/index/chunks.jsonl` plus a local build manifest. Vector indexing, graph construction, retrieval, reranking, generation, and evaluation are still pending. Third-party textbook files and generated chunks stay local and are not committed.
+The repository now contains project documents, original bilingual samples, pinned textbook downloads, offline Markdown ingestion, a unified bilingual vector index, and a source-grounded Chinese answer baseline. `fetch` downloads and verifies listed files; `ingest` chunks them offline; `build-index` creates a local NumPy cosine index with a local embedding model; `ask` retrieves source passages and uses a configurable DeepSeek-compatible API to generate a Chinese answer. Graph construction, graph expansion, relation-aware reranking, and evaluation are still pending. Third-party textbook files and generated indexes stay local and are not committed.
 
 ## Download and local ingestion
 
@@ -19,6 +19,19 @@ python -m kgrag.cli ingest --sources config/sources.yaml
 ```
 
 `fetch` reuses locally verified files without network access and stops if an existing file or a download fails SHA256 verification. `ingest` does not access the network and also stops if a file is missing or its hash does not match. Character counts are the default chunking budget; `build_corpus` also accepts a token counter for the selected model. See the [build issue log](docs/RAG构建问题与解决方案.md) for problems and resolutions.
+
+## Vector index and Chinese answers
+
+Install the optional local embedding dependencies before building the index. The default model is `BAAI/bge-m3`. Its first use may download model files; the index records the resolved model revision. You can point `--embedding-model` to a local model directory, and should pin `--embedding-revision` for a formal experiment. Answer generation requires `DEEPSEEK_API_KEY`; index building does not.
+
+```bash
+python -m pip install -e '.[embedding]'
+python -m kgrag.cli build-index --chunks data/index/chunks.jsonl
+export DEEPSEEK_API_KEY=your_key_here
+python -m kgrag.cli ask "注意力机制如何使用查询和键？"
+```
+
+`ask` outputs a Chinese answer, valid passage IDs, evidence languages and source links, plus model and generation settings. It returns an insufficient-evidence response when there is no evidence or no valid citation. If model memory is limited, select a smaller multilingual FlagEmbedding model with `--embedding-model` and rebuild the index with that same model; the three planned retrieval modes must share this index.
 
 The project's original code is licensed under [MIT](LICENSE). That license does not cover the *Dive into Deep Learning* textbook content; consult the relevant versions of the [Chinese repository](https://github.com/d2l-ai/d2l-zh) and [English repository](https://github.com/d2l-ai/d2l-en) before using that content.
 
