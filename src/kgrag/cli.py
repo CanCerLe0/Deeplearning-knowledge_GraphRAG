@@ -12,7 +12,7 @@ import yaml
 from .answer import REFUSAL, generate_answer
 from .embed import DenseIndex, FlagEmbedder, load_chunks
 from .fetch import download_url, fetch_sources
-from .graph import build_graph
+from .graph import PROMPT_VERSION, build_graph
 from .ingest import build_corpus, load_sources
 from .llm import DeepSeekChatClient
 from .schema import Answer
@@ -38,10 +38,11 @@ def main(argv: list[str] | None = None) -> int:
     build_graph_command.add_argument("--chunks", type=Path, default=Path("data/index/chunks.jsonl"))
     build_graph_command.add_argument("--out-dir", type=Path, default=Path("data/index/graph"))
     build_graph_command.add_argument("--aliases", type=Path, default=Path("config/concept_aliases.yaml"))
+    build_graph_command.add_argument("--reviews", type=Path, default=Path("config/graph_reviews.yaml"))
     build_graph_command.add_argument("--chat-model", default="deepseek-flash")
     build_graph_command.add_argument("--base-url", default="https://api.deepseek.com")
     build_graph_command.add_argument("--temperature", type=float, default=0.0)
-    build_graph_command.add_argument("--max-output-tokens", type=int, default=1024)
+    build_graph_command.add_argument("--max-output-tokens", type=int, default=2048)
     build_graph_command.add_argument("--batch-size", type=int, default=8)
     ask = commands.add_parser("ask", help="向量检索并依据原文证据生成中文回答")
     ask.add_argument("question")
@@ -72,6 +73,11 @@ def main(argv: list[str] | None = None) -> int:
         alias_data = yaml.safe_load(args.aliases.read_text(encoding="utf-8"))
         if not isinstance(alias_data, dict) or not isinstance(alias_data.get("aliases"), list):
             raise ValueError("别名文件必须包含 aliases 列表")
+        review_data = yaml.safe_load(args.reviews.read_text(encoding="utf-8"))
+        if not isinstance(review_data, dict) or not isinstance(review_data.get("reviews"), list):
+            raise ValueError("图边审核文件必须包含 reviews 列表")
+        if review_data.get("prompt_version") != PROMPT_VERSION:
+            raise ValueError("图边审核文件与当前抽取提示词版本不一致")
         manifest_path = args.chunks.parent / "build_manifest.json"
         corpus_manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else None
         client = DeepSeekChatClient(
@@ -81,8 +87,16 @@ def main(argv: list[str] | None = None) -> int:
         graph = build_graph(
             chunks, client, args.out_dir, aliases=alias_data["aliases"],
             batch_size=args.batch_size, corpus_manifest=corpus_manifest,
+            reviews=review_data["reviews"],
         )
-        print(f"构图完成：有效关系 {len(graph.edges)}，拒绝 {sum(graph.rejected.values())}，输出：{args.out_dir}")
+        review_summary = json.loads(
+            (args.out_dir / "graph_manifest.json").read_text(encoding="utf-8")
+        )["review_summary"]
+        review_excluded = review_summary["rejected"] + review_summary["uncertain"]
+        print(
+            f"构图完成：有效关系 {len(graph.edges)}，结构拒绝 {sum(graph.rejected.values())}，"
+            f"审核排除 {review_excluded}，输出：{args.out_dir}"
+        )
         return 0
 
     if args.command in ("build-index", "ask"):

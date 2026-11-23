@@ -17,7 +17,7 @@ from .llm import ChatClient
 from .schema import Chunk, Edge
 
 
-PROMPT_VERSION = "concept-relations-v1"
+PROMPT_VERSION = "concept-relations-v2"
 PREDICATES = frozenset({"prerequisite_of", "component_of", "contrasts_with", "used_in"})
 
 
@@ -62,11 +62,13 @@ class GraphIndex:
     def __init__(
         self, chunks: Sequence[Chunk], edges: Sequence[Edge],
         aliases: Sequence[dict[str, str]], rejected: Mapping[str, int],
+        reviews: Sequence[dict[str, str]] = (),
     ) -> None:
         self.chunks = {chunk.chunk_id: chunk for chunk in chunks}
         self.edges = list(edges)
         self.aliases = list(aliases)
         self.rejected = dict(rejected)
+        self.reviews = list(reviews)
         self._canonical: dict[str, str] = {}
         for alias in aliases:
             self._canonical[_key(alias["alias"])] = alias["canonical"]
@@ -119,6 +121,7 @@ class GraphIndex:
             "edges": [asdict(edge) for edge in self.edges],
             "aliases": self.aliases,
             "rejected": self.rejected,
+            "reviews": self.reviews,
         })
         _atomic_json(out_dir / "graph_manifest.json", manifest)
 
@@ -135,7 +138,8 @@ class GraphIndex:
             if reason is not None or validated != edge:
                 raise ValueError("图索引包含无效关系或无法追溯的证据片段")
         aliases = _validated_aliases(data["aliases"], {chunk.chunk_id: chunk for chunk in chunks})
-        return cls(chunks, edges, aliases, data["rejected"])
+        reviews = _validated_reviews(data.get("reviews", []))
+        return cls(chunks, edges, aliases, data["rejected"], reviews)
 
 
 def _validated_aliases(
@@ -198,10 +202,40 @@ def _validated_edge(item: Any, batch_ids: set[str]) -> tuple[Edge | None, str | 
     return Edge(subject, predicate, object_, item["evidence_chunk_id"], float(confidence)), None
 
 
+def _validated_reviews(records: Sequence[Mapping[str, str]]) -> list[dict[str, str]]:
+    result: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    for record in records:
+        if not isinstance(record, Mapping):
+            raise ValueError("图边审核记录必须是对象")
+        subject = record.get("subject")
+        predicate = record.get("predicate")
+        object_ = record.get("object")
+        evidence_id = record.get("evidence_chunk_id")
+        status = record.get("status")
+        reason = record.get("reason", "")
+        if not all(isinstance(value, str) and value.strip() for value in
+                   (subject, predicate, object_, evidence_id, status)):
+            raise ValueError("图边审核记录缺少关系、证据 ID 或状态")
+        if predicate not in PREDICATES or status not in {"supported", "rejected", "uncertain"}:
+            raise ValueError("图边审核记录的关系类型或状态无效")
+        if not isinstance(reason, str) or (status != "supported" and not reason.strip()):
+            raise ValueError("拒绝或待定的图边审核记录必须填写原因")
+        identity = (_name(subject), predicate, _name(object_), evidence_id)
+        if identity in seen:
+            raise ValueError("图边审核记录重复")
+        seen.add(identity)
+        result.append({"subject": identity[0], "predicate": identity[1],
+                       "object": identity[2], "evidence_chunk_id": identity[3],
+                       "status": status, "reason": reason})
+    return result
+
+
 def build_graph(
     chunks: list[Chunk], client: ChatClient, out_dir: Path, *,
     aliases: Sequence[Mapping[str, str]] = (), batch_size: int = 8,
     corpus_manifest: Mapping[str, Any] | None = None,
+    reviews: Sequence[Mapping[str, str]] = (),
 ) -> GraphIndex:
     """按语言和小节抽取候选边，校验后保存图与抽取缓存。"""
     if batch_size < 1:
@@ -210,6 +244,7 @@ def build_graph(
     if len(by_id) != len(chunks):
         raise ValueError("片段 ID 重复")
     reviewed_aliases = _validated_aliases(aliases, by_id)
+    validated_reviews = _validated_reviews(reviews)
     out_dir = Path(out_dir)
     batches: dict[tuple[str, str], list[Chunk]] = defaultdict(list)
     for chunk in chunks:
@@ -241,7 +276,16 @@ def build_graph(
             else:
                 messages = [
                     {"role": "system", "content": (
-                        "从给定 Markdown 片段抽取有原文支持的概念关系。仅返回 JSON 对象，"
+                        "从给定 Markdown 片段抽取有原文直接支持的深度学习概念关系。"
+                        "先核对关系方向，再决定是否输出；证据只限该条边指定的片段正文。"
+                        "不要从章节标题、常识、历史先后或其他片段推断关系。"
+                        "不要把代码中的函数名、类名、变量名当作概念节点。"
+                        "prerequisite_of 表示 subject 是理解或构建 object 所需的概念前提；"
+                        "代码调用、数据流、历史启发不等于前置条件，尤其不能颠倒依赖方向。"
+                        "component_of 表示 subject 是 object 的明确组成部分；类实现某概念不等于该概念是类的组成部分。"
+                        "contrasts_with 只用于原文明确比较的不同概念，逆向函数不算概念对比。"
+                        "used_in 表示 subject 是明确用于 object 的方法或组件，应用场景不能写反。"
+                        "若无法确定关系类型或方向，跳过该边。仅返回 JSON 对象，"
                         "格式为 {\"edges\": [{\"subject\": str, \"predicate\": str, "
                         "\"object\": str, \"evidence_chunk_id\": str, \"confidence\": number}]}。"
                         "predicate 仅可为 prerequisite_of、component_of、contrasts_with、used_in。"
@@ -271,9 +315,22 @@ def build_graph(
                     previous = edges.get(identity)
                     if previous is None or edge.confidence > previous.confidence:
                         edges[identity] = edge
+    review_by_identity = {
+        (record["subject"], record["predicate"], record["object"],
+         record["evidence_chunk_id"]): record for record in validated_reviews
+    }
+    review_summary = {"supported": 0, "rejected": 0, "uncertain": 0, "stale": 0}
+    for identity, record in review_by_identity.items():
+        if identity not in edges:
+            review_summary["stale"] += 1
+        else:
+            review_summary[record["status"]] += 1
+            if record["status"] != "supported":
+                del edges[identity]
     graph = GraphIndex(
         sorted(chunks, key=lambda chunk: chunk.chunk_id),
         [edges[key] for key in sorted(edges)], reviewed_aliases, rejected,
+        validated_reviews,
     )
     source_revisions = sorted({
         chunk.url.split("/blob/", 1)[1].split("/", 1)[0]
@@ -287,6 +344,7 @@ def build_graph(
         "extraction_temperature": extraction_config["temperature"],
         "extraction_max_tokens": extraction_config["max_tokens"],
         "edge_count": len(graph.edges), "alias_count": len(reviewed_aliases),
+        "review_summary": review_summary,
         "rejected": dict(rejected), "source_revisions": source_revisions,
         "corpus_sources": list(corpus_manifest.get("sources", [])) if corpus_manifest else [],
     }

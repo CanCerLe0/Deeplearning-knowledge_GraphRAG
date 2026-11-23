@@ -1,0 +1,245 @@
+# Curated review of 40 stratified edges from concept-relations-v2.
+# supported = direct textual and concept-level support; rejected/uncertain are withheld.
+# Source URLs and sampling method are recorded in docs/图谱抽取抽查.md.
+prompt_version: concept-relations-v2
+reviews:
+- subject: recurrent layers
+  predicate: component_of
+  object: recurrent neural networks
+  evidence_chunk_id: 1079cca2979d4a2d5a802c07
+  status: supported
+  reason: ''
+- subject: masked multi-head decoder self-attention
+  predicate: component_of
+  object: Transformer decoder
+  evidence_chunk_id: e01c96f259728a6d1dc1907a
+  status: supported
+  reason: ''
+- subject: multi-head self-attention pooling
+  predicate: component_of
+  object: Transformer encoder
+  evidence_chunk_id: 73a9194e0000fe4ea15cb870
+  status: supported
+  reason: ''
+- subject: hidden state
+  predicate: component_of
+  object: recurrent neural networks
+  evidence_chunk_id: 1079cca2979d4a2d5a802c07
+  status: supported
+  reason: ''
+- subject: decoder RNN
+  predicate: component_of
+  object: sequence-to-sequence learning
+  evidence_chunk_id: 61dbbe331342116f0843690f
+  status: rejected
+  reason: 目标是学习任务，不是由 decoder RNN 组成的架构
+- subject: positionwise feed-forward network
+  predicate: component_of
+  object: Transformer model
+  evidence_chunk_id: 4ed879206d87eff3e63be50a
+  status: supported
+  reason: ''
+- subject: layer normalization
+  predicate: component_of
+  object: add & norm
+  evidence_chunk_id: 742741b370990d49379f8a7f
+  status: supported
+  reason: ''
+- subject: attention pooling
+  predicate: component_of
+  object: attention mechanism
+  evidence_chunk_id: dce70487934a921e73be0d82
+  status: supported
+  reason: ''
+- subject: residual connections
+  predicate: component_of
+  object: Transformer
+  evidence_chunk_id: 4ed879206d87eff3e63be50a
+  status: supported
+  reason: ''
+- subject: encoder--decoder attention
+  predicate: component_of
+  object: Transformer decoder
+  evidence_chunk_id: e01c96f259728a6d1dc1907a
+  status: supported
+  reason: ''
+- subject: greedy search
+  predicate: contrasts_with
+  object: beam search
+  evidence_chunk_id: 7363dc54d456438343983006
+  status: supported
+  reason: ''
+- subject: attention mechanism
+  predicate: contrasts_with
+  object: non-differentiable attention model
+  evidence_chunk_id: dce70487934a921e73be0d82
+  status: supported
+  reason: ''
+- subject: Laplace smoothing
+  predicate: contrasts_with
+  object: deep learning based language models
+  evidence_chunk_id: 8f50dba4258a201ef2813463
+  status: supported
+  reason: ''
+- subject: hidden state
+  predicate: prerequisite_of
+  object: recurrent neural networks
+  evidence_chunk_id: 1079cca2979d4a2d5a802c07
+  status: supported
+  reason: ''
+- subject: Bahdanau attention mechanism
+  predicate: prerequisite_of
+  object: Transformers
+  evidence_chunk_id: 233af2f40ea519ba4d2426de
+  status: rejected
+  reason: 历史影响不能证明概念前置条件
+- subject: cross-entropy loss
+  predicate: prerequisite_of
+  object: perplexity
+  evidence_chunk_id: 09fe1281e22299a55989634f
+  status: supported
+  reason: ''
+- subject: softmax operation
+  predicate: used_in
+  object: attention mechanism
+  evidence_chunk_id: e06709f8c03a5526a3a36a19
+  status: supported
+  reason: ''
+- subject: linear regression model
+  predicate: used_in
+  object: autoregressive models
+  evidence_chunk_id: cb24caf4fbf7c8cb8f6118eb
+  status: supported
+  reason: ''
+- subject: encoder--decoder architectures
+  predicate: used_in
+  object: machine translation
+  evidence_chunk_id: 9445a6e193087eab67a3a54a
+  status: supported
+  reason: ''
+- subject: cross-entropy loss
+  predicate: used_in
+  object: language model quality measurement
+  evidence_chunk_id: 54f297c79ac1075d750e18a8
+  status: supported
+  reason: ''
+- subject: 编码器
+  predicate: component_of
+  object: 编码器-解码器架构
+  evidence_chunk_id: 9331dd9f7e86371bcd1f2bd6
+  status: supported
+  reason: ''
+- subject: 翻译模型
+  predicate: component_of
+  object: 统计机器翻译
+  evidence_chunk_id: 53d6e51825f7f602fa222c82
+  status: supported
+  reason: ''
+- subject: 位置编码
+  predicate: component_of
+  object: Transformer编码器
+  evidence_chunk_id: 89f2b1d7d417dfc32c6d5cb1
+  status: supported
+  reason: ''
+- subject: 层规范化
+  predicate: component_of
+  object: EncoderBlock
+  evidence_chunk_id: 59c353088843f9120c94ae04
+  status: rejected
+  reason: EncoderBlock 是代码类名，不是概念节点
+- subject: 层规范化
+  predicate: component_of
+  object: Transformer编码器
+  evidence_chunk_id: 54148c70349641288860eafe
+  status: supported
+  reason: ''
+- subject: 残差连接
+  predicate: component_of
+  object: DecoderBlock
+  evidence_chunk_id: c90ef63c0f3006e41f9cdd29
+  status: rejected
+  reason: DecoderBlock 是代码类名，不是概念节点
+- subject: 隐状态
+  predicate: component_of
+  object: 循环神经网络
+  evidence_chunk_id: ee23d85a65a31f731d350959
+  status: supported
+  reason: ''
+- subject: 解码器
+  predicate: component_of
+  object: 编码器-解码器架构
+  evidence_chunk_id: 9331dd9f7e86371bcd1f2bd6
+  status: supported
+  reason: ''
+- subject: 语言模型
+  predicate: component_of
+  object: 统计机器翻译
+  evidence_chunk_id: 53d6e51825f7f602fa222c82
+  status: supported
+  reason: ''
+- subject: 编码器-解码器注意力
+  predicate: component_of
+  object: DecoderBlock
+  evidence_chunk_id: c90ef63c0f3006e41f9cdd29
+  status: rejected
+  reason: DecoderBlock 是代码类名，不是概念节点
+- subject: 隐状态
+  predicate: contrasts_with
+  object: 隐藏层
+  evidence_chunk_id: ee23d85a65a31f731d350959
+  status: supported
+  reason: ''
+- subject: 束搜索
+  predicate: contrasts_with
+  object: 贪心搜索
+  evidence_chunk_id: 87df1378810f0de9235562ea
+  status: supported
+  reason: ''
+- subject: Nadaraya-Watson核回归
+  predicate: prerequisite_of
+  object: 非参数的注意力汇聚
+  evidence_chunk_id: 79ea4fb91b4fdcfcf97bac76
+  status: rejected
+  reason: 核回归是该注意力汇聚模型的实例，不是前置条件
+- subject: 交叉熵损失
+  predicate: prerequisite_of
+  object: 困惑度
+  evidence_chunk_id: f5155096a59ef09429296fbd
+  status: supported
+  reason: ''
+- subject: 贪心搜索
+  predicate: prerequisite_of
+  object: 束搜索
+  evidence_chunk_id: 87df1378810f0de9235562ea
+  status: uncertain
+  reason: 束搜索是贪心搜索的改进，但原文未明确要求先掌握贪心搜索
+- subject: 机器翻译
+  predicate: prerequisite_of
+  object: 序列转换模型
+  evidence_chunk_id: 53d6e51825f7f602fa222c82
+  status: rejected
+  reason: 机器翻译是序列转换任务，不是模型的前置条件
+- subject: 高斯核
+  predicate: used_in
+  object: 非参数的注意力汇聚
+  evidence_chunk_id: 79ea4fb91b4fdcfcf97bac76
+  status: supported
+  reason: ''
+- subject: 困惑度
+  predicate: used_in
+  object: 评估基于循环神经网络的模型
+  evidence_chunk_id: 426f392cb5c4ed7d5b933b08
+  status: rejected
+  reason: 被引片段正文没有说明困惑度，不能只凭小节标题
+- subject: sequence_mask
+  predicate: used_in
+  object: MaskedSoftmaxCELoss
+  evidence_chunk_id: 1d15c8fc86342e1750dedacf
+  status: rejected
+  reason: sequence_mask 和 MaskedSoftmaxCELoss 是代码符号，不是概念节点
+- subject: sequence_mask
+  predicate: used_in
+  object: MaskedSoftmaxCELoss
+  evidence_chunk_id: 470d1d0cca3401e702cec7d7
+  status: rejected
+  reason: sequence_mask 和 MaskedSoftmaxCELoss 是代码符号，不是概念节点

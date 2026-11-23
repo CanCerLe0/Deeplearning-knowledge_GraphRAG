@@ -136,6 +136,33 @@ def test_load_refuses_alias_without_review_evidence(tmp_path: Path) -> None:
         GraphIndex.load(tmp_path)
 
 
+def test_reviewed_rejection_is_excluded_from_paths_and_persists(tmp_path: Path) -> None:
+    from kgrag.graph import GraphIndex, build_graph
+
+    sample = chunk("zh-1", "查询和值用于注意力机制。", "zh", "注意力")
+    client = FakeClient({"edges": [
+        {"subject": "查询", "predicate": "used_in", "object": "注意力机制",
+         "evidence_chunk_id": "zh-1", "confidence": 0.9},
+        {"subject": "值", "predicate": "prerequisite_of", "object": "注意力机制",
+         "evidence_chunk_id": "zh-1", "confidence": 0.9},
+    ]})
+    reviews = [{"subject": "值", "predicate": "prerequisite_of",
+                "object": "注意力机制", "evidence_chunk_id": "zh-1",
+                "status": "rejected", "reason": "原文只说明使用，并非前置条件"}]
+
+    graph = build_graph([sample], client, tmp_path, reviews=reviews)
+
+    assert [(edge.subject, edge.predicate) for edge in graph.edges] == [("查询", "used_in")]
+    assert graph.neighbors("值", 2) == []
+    assert len(client.calls) == 1
+    manifest = json.loads((tmp_path / "graph_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["review_summary"] == {"rejected": 1, "uncertain": 0, "supported": 0,
+                                           "stale": 0}
+    reloaded = GraphIndex.load(tmp_path)
+    assert reloaded.edges == graph.edges
+    assert reloaded.reviews == reviews
+
+
 def test_batches_by_language_and_section_and_caches_same_input(tmp_path: Path) -> None:
     from kgrag.graph import build_graph
 
@@ -239,3 +266,33 @@ def test_cli_builds_graph_from_chunks_and_records_source_revision(tmp_path: Path
     result = json.loads((out_dir / "graph_manifest.json").read_text(encoding="utf-8"))
     assert result["corpus_sources"] == manifest["sources"]
     assert result["prompt_version"]
+
+
+def test_cli_applies_curated_review_file(tmp_path: Path, capsys) -> None:
+    from kgrag.cli import main
+    from kgrag.graph import GraphIndex, PROMPT_VERSION
+
+    sample = chunk("zh-1", "查询用于注意力机制。", "zh", "注意力")
+    chunks = tmp_path / "chunks.jsonl"
+    chunks.write_text(json.dumps(asdict(sample), ensure_ascii=False) + "\n", encoding="utf-8")
+    aliases = tmp_path / "aliases.yaml"
+    aliases.write_text("aliases: []\n", encoding="utf-8")
+    reviews = tmp_path / "reviews.yaml"
+    reviews.write_text(
+        f"prompt_version: {PROMPT_VERSION}\nreviews:\n"
+        "  - subject: 查询\n    predicate: used_in\n    object: 注意力机制\n"
+        "    evidence_chunk_id: zh-1\n    status: rejected\n    reason: 审核拒绝\n",
+        encoding="utf-8",
+    )
+    client = FakeClient({"edges": [{
+        "subject": "查询", "predicate": "used_in", "object": "注意力机制",
+        "evidence_chunk_id": "zh-1", "confidence": 0.9,
+    }]})
+    out_dir = tmp_path / "graph"
+    with patch("kgrag.cli.DeepSeekChatClient", return_value=client):
+        assert main(["build-graph", "--chunks", str(chunks), "--out-dir", str(out_dir),
+                     "--aliases", str(aliases), "--reviews", str(reviews)]) == 0
+    graph = GraphIndex.load(out_dir)
+    assert graph.edges == []
+    assert graph.neighbors("查询", 2) == []
+    assert "审核排除 1" in capsys.readouterr().out

@@ -1,5 +1,6 @@
-# These two pairs are checked against the project's self-written bilingual
-# sample definitions. Textbook concepts require separate review before adding.
+# Sample pairs use the project's self-written bilingual definitions. Textbook
+# pairs below use explicit bilingual labels or matching definitions in the
+# pinned Chinese and English source passages; author review remains welcome.
 aliases:
   - canonical: 注意力机制
     alias: attention
@@ -11,3 +12,23 @@ aliases:
     canonical_chunk_id: c4700cbc55b404ac42b4b95c
     alias_chunk_id: 0cd147ff85fc61f536e0a70a
     verified_by: parallel-sample-definition-v1
+  - canonical: 束搜索
+    alias: beam search
+    canonical_chunk_id: 87df1378810f0de9235562ea
+    alias_chunk_id: 8df76ea4e318a0c3175e09ce
+    verified_by: bilingual-textbook-term-and-context-2026-11-23
+  - canonical: 层规范化
+    alias: layer normalization
+    canonical_chunk_id: 2ecdcdc8bbf0ffedd34ce101
+    alias_chunk_id: 15b30b194865dbcef326db01
+    verified_by: bilingual-textbook-term-and-context-2026-11-23
+  - canonical: 隐状态
+    alias: hidden state
+    canonical_chunk_id: ee23d85a65a31f731d350959
+    alias_chunk_id: 1079cca2979d4a2d5a802c07
+    verified_by: bilingual-textbook-definition-2026-11-23
+  - canonical: 注意力机制
+    alias: attention mechanism
+    canonical_chunk_id: 4299ae203690c147c8c05696
+    alias_chunk_id: dce70487934a921e73be0d82
+    verified_by: bilingual-textbook-qkv-context-2026-11-23
