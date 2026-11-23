@@ -8,6 +8,12 @@ The [implementation plan](docs/图谱增强RAG实施计划.md), [design](docs/�
 
 The repository now contains project documents, original bilingual samples, pinned textbook downloads, offline Markdown ingestion, a unified bilingual vector index, a reviewable concept graph, and three retrieval modes with source-grounded Chinese answers. `fetch` downloads and verifies listed files; `ingest` chunks them offline; `build-index` creates a local NumPy cosine index with a local embedding model; `build-graph` extracts relations through a configurable DeepSeek-compatible API and reuses a local cache; `ask` retrieves locally in the selected mode, then uses that API to generate a Chinese answer. Development questions, formal evaluation, and the web demo are still pending. Third-party textbook files and generated indexes stay local and are not committed.
 
+## RAG retrieval stages and current strategy
+
+1. **Embedding:** The local `BAAI/bge-m3` model (the default) encodes Chinese questions and Chinese and English source passages as dense vectors in one shared space. Passage vectors are L2-normalized when the index is built, and question vectors are L2-normalized at query time.
+2. **Recall:** NumPy computes the dot product between the question vector and every indexed passage vector, which equals cosine similarity after normalization, then ranks the passages. `dense` uses the vector results; `one_hop` and `typed_path` start from the top 8 vector-ranked passages and expand candidates by at most one and two hops, respectively, through the provenance-backed concept graph. The seed count is configurable in `config/retrieval.yaml`.
+3. **Reranking and evidence selection:** No cross-encoder model is currently used. `dense` ranks by normalized vector score; `one_hop` adds a one-hop bonus; `typed_path` combines normalized vector score, the best graph-path score, and question-concept coverage with configurable weights. Path scores account for relation-type match, edge confidence, and a hop penalty. The final source passages are selected under the same context token budget, per-section limit, and bilingual near-duplicate limit before Chinese answer generation.
+
 ## Download and local ingestion
 
 The original sample files are already included. Run these commands to download the listed Chinese and English textbook files, then ingest them offline:
