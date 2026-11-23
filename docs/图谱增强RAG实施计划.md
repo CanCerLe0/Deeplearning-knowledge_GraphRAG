@@ -2,7 +2,7 @@
 
 **Goal:** 在两周、每天 3–4 小时内，以本地中英文 Markdown 构建可扩展的深度学习知识库，验证关系感知的多跳图谱检索，并发布到作者个人 GitHub 公开仓库。
 
-**Architecture:** 来源清单固定 `d2l-zh`、`d2l-en` 的提交和文件哈希，先下载中英文 Markdown 到本地，再离线解析为带稳定 ID 和语言元数据的片段；同一批片段同时进入本地统一双语向量索引和带原文证据的概念图。本地完成召回和重排，外接大模型承担关系候选抽取与中文答案生成。三种检索器共用 embedding、生成模型、提示词和上下文预算；评测脚本冻结开发/测试题与运行配置，网页展示答案、原文语言、引用和实际检索路径。
+**Architecture:** 来源清单固定 `d2l-zh`、`d2l-en` 的提交和文件哈希，先下载中英文 Markdown 到本地，再离线解析为带稳定 ID 和语言元数据的片段；同一批片段同时进入本地统一双语向量索引和带原文证据的概念图。本地完成召回和重排，外接大模型承担关系候选抽取与中文答案生成。三种检索器共用 embedding、生成模型、提示词和上下文预算；评测脚本冻结开发/测试题与运行配置。网页以导航栏分开问答页和知识图谱页：前者展示答案、引用和实际检索路径，后者交互展示本地图索引的全貌与节点关联原文。
 
 **Tech Stack:** Python 3.11+；Pydantic、PyYAML、Markdown 解析器、NumPy、NetworkX、FlagEmbedding（优先验证本地 BGE-M3，显存不足时配置较小的多语言模型）、可配置的 DeepSeek 兼容 Chat Completions API、Streamlit、pytest。依赖在实现时锁定；索引为本地 JSON/NumPy 文件，无需数据库服务。
 
@@ -48,7 +48,8 @@
 | `src/kgrag/answer.py` | 带引用生成、引用校验、证据不足时拒答 |
 | `src/kgrag/evaluate.py` | 题目格式、检索指标、实验运行与结果导出 |
 | `src/kgrag/cli.py` | `fetch`、`ingest`、`build-graph`、`ask`、`evaluate` 命令 |
-| `app.py` | Streamlit 演示，不含算法逻辑 |
+| `app.py` | Streamlit 问答页与知识图谱页的导航入口，不含检索算法逻辑 |
+| `src/kgrag/graph_view.py` | 从本地图索引整理全图节点、活跃边与节点关联原文，供前端展示 |
 | `config/sources.yaml` | 中英文仓库、完整提交 SHA、逐文件路径/语言/SHA256/许可及自写来源 |
 | `data/raw/` | 下载的第三方 Markdown，仅保留本地并加入 `.gitignore` |
 | `data/sample/` | 自写的小型双语 Markdown 文档；仅此示例语料进 Git |
@@ -139,14 +140,14 @@
 
 ### Task 7: 演示与公开仓库材料（第 12–13 天）
 
-**Files:** `app.py`、`README.md`、`.env.example`、`LICENSE`、`docs/results.md`、`docs/数据来源.md`、`tests/test_release_fixture.py`。
+**Files:** `app.py`、`src/kgrag/graph_view.py`、`README.md`、`.env.example`、`LICENSE`、`docs/results.md`、`docs/数据来源.md`、`tests/test_release_fixture.py`、`tests/test_graph_view.py`。
 
-**Interfaces:** UI 调用已有 `retrieve` 与 `generate_answer`，展示三路答案、引用原文、被使用的局部概念路径；不在 UI 中复制检索算法。
+**Interfaces:** 导航栏在“问答”与“知识图谱”之间切换。问答页调用已有 `retrieve` 与 `generate_answer`，展示三路答案、引用原文和被使用的局部概念路径。知识图谱页从 `GraphIndex` 读取全部活跃节点和边，点击概念节点时展示相邻关系及其证据片段正文、语言、来源位置和固定版本链接；不在 UI 中复制检索算法，也不为浏览图谱调用生成 API。
 
-- [ ] **Step 1: 写失败的发布样例测试。** 无 API 密钥时，使用自写样例语料和假客户端执行一条问答；断言 README 所列本地命令可运行，新增 Markdown 来源可查到。
-- [ ] **Step 2: 运行 `python -m pytest tests/test_release_fixture.py -v`。** 预期失败。
-- [ ] **Step 3: 实现 Streamlit 页面、预设问题、引用语言与局部路径视图；补齐 README 首屏的研究问题、方法图、对照表、消融和失败分析。** 写清两个仓库的下载、校验、作者、提交与许可；源码仓库只含自写示例，第三方教材由复现者本地下载。
-- [ ] **Step 4: 运行测试和 `streamlit run app.py`；手动检查一个引用英文原文的成功案例、一个失败案例及新增来源。** 截图或录制 1–2 分钟演示。
+- [ ] **Step 1: 写失败的发布样例与图谱展示数据测试。** 无 API 密钥时，使用自写样例语料和假客户端执行一条问答；断言 README 所列本地命令可运行，新增 Markdown 来源可查到。用含中英文证据的样例图核对全图节点与活跃边数量；选择一个节点后，仅列出相连关系及其可追溯、去重的原文片段，保留语言、来源位置和链接；拒绝或待定边不得作为活跃边展示。
+- [ ] **Step 2: 运行 `python -m pytest tests/test_release_fixture.py tests/test_graph_view.py -v`。** 预期失败。
+- [ ] **Step 3: 实现带导航栏的 Streamlit 问答页与独立知识图谱页。** 问答页提供预设问题、引用语言与局部路径视图；图谱页默认展示当前本地图索引的全部活跃节点与边，支持缩放、拖拽、点击节点并在详情区查看相邻关系及关联原文。选用能把节点点击事件传回应用的组件；展示边的审核状态，未逐条审核的边不得标为已证实。图谱浏览不调用生成 API。补齐 README 首屏的研究问题、方法图、对照表、消融和失败分析；写清两个仓库的下载、校验、作者、提交与许可。源码仓库只含自写示例，第三方教材由复现者本地下载。
+- [ ] **Step 4: 运行测试和 `streamlit run app.py`；手动检查导航切换、全图节点与边数量、节点点击后的中英文原文与固定版本链接、一个问答成功案例、一个失败案例及新增来源。** 截图或录制 1–2 分钟演示。
 - [ ] **Step 5: 提交。** `git commit -m "docs: add graph RAG demo and reproducibility guide"`。
 
 ### Task 8: 干净环境复现与 GitHub 发布（第 14 天）
