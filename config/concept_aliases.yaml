@@ -1,0 +1,13 @@
+# These two pairs are checked against the project's self-written bilingual
+# sample definitions. Textbook concepts require separate review before adding.
+aliases:
+  - canonical: 注意力机制
+    alias: attention
+    canonical_chunk_id: 9dac2f23f0a8e70cc5b03b8e
+    alias_chunk_id: 482a91fd6df92f0aec0b78e4
+    verified_by: parallel-sample-definition-v1
+  - canonical: 查询
+    alias: query
+    canonical_chunk_id: c4700cbc55b404ac42b4b95c
+    alias_chunk_id: 0cd147ff85fc61f536e0a70a
+    verified_by: parallel-sample-definition-v1

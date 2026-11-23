@@ -7,9 +7,12 @@ import json
 from collections import Counter
 from pathlib import Path
 
+import yaml
+
 from .answer import REFUSAL, generate_answer
 from .embed import DenseIndex, FlagEmbedder, load_chunks
 from .fetch import download_url, fetch_sources
+from .graph import build_graph
 from .ingest import build_corpus, load_sources
 from .llm import DeepSeekChatClient
 from .schema import Answer
@@ -31,6 +34,15 @@ def main(argv: list[str] | None = None) -> int:
     build_index = commands.add_parser("build-index", help="从入库片段构建双语向量索引")
     build_index.add_argument("--chunks", type=Path, default=Path("data/index/chunks.jsonl"))
     build_index.add_argument("--out-dir", type=Path, default=Path("data/index/dense"))
+    build_graph_command = commands.add_parser("build-graph", help="抽取并校验有来源的概念关系")
+    build_graph_command.add_argument("--chunks", type=Path, default=Path("data/index/chunks.jsonl"))
+    build_graph_command.add_argument("--out-dir", type=Path, default=Path("data/index/graph"))
+    build_graph_command.add_argument("--aliases", type=Path, default=Path("config/concept_aliases.yaml"))
+    build_graph_command.add_argument("--chat-model", default="deepseek-flash")
+    build_graph_command.add_argument("--base-url", default="https://api.deepseek.com")
+    build_graph_command.add_argument("--temperature", type=float, default=0.0)
+    build_graph_command.add_argument("--max-output-tokens", type=int, default=1024)
+    build_graph_command.add_argument("--batch-size", type=int, default=8)
     ask = commands.add_parser("ask", help="向量检索并依据原文证据生成中文回答")
     ask.add_argument("question")
     ask.add_argument("--index-dir", type=Path, default=Path("data/index/dense"))
@@ -53,6 +65,24 @@ def main(argv: list[str] | None = None) -> int:
         sources = load_sources(args.sources)
         paths = fetch_sources(sources, args.raw_dir, download_url)
         print(f"已校验 {len(paths)} 个教材文件，保存于 {args.raw_dir}")
+        return 0
+
+    if args.command == "build-graph":
+        chunks = load_chunks(args.chunks)
+        alias_data = yaml.safe_load(args.aliases.read_text(encoding="utf-8"))
+        if not isinstance(alias_data, dict) or not isinstance(alias_data.get("aliases"), list):
+            raise ValueError("别名文件必须包含 aliases 列表")
+        manifest_path = args.chunks.parent / "build_manifest.json"
+        corpus_manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else None
+        client = DeepSeekChatClient(
+            model=args.chat_model, base_url=args.base_url,
+            temperature=args.temperature, max_tokens=args.max_output_tokens,
+        )
+        graph = build_graph(
+            chunks, client, args.out_dir, aliases=alias_data["aliases"],
+            batch_size=args.batch_size, corpus_manifest=corpus_manifest,
+        )
+        print(f"构图完成：有效关系 {len(graph.edges)}，拒绝 {sum(graph.rejected.values())}，输出：{args.out_dir}")
         return 0
 
     if args.command in ("build-index", "ask"):

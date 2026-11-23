@@ -69,6 +69,17 @@ class Chunk:
 
 
 @dataclass(frozen=True)
+class Edge:
+    """经本地校验的概念关系；证据始终是一个原文片段。"""
+
+    subject: str
+    predicate: Literal["prerequisite_of", "component_of", "contrasts_with", "used_in"]
+    object: str
+    evidence_chunk_id: str
+    confidence: float
+
+
+@dataclass(frozen=True)
 class Evidence:
     """检索到的原文片段及其得分和图路径。"""
 
