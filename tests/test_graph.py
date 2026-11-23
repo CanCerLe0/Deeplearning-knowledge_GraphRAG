@@ -101,6 +101,25 @@ def test_only_reviewed_bilingual_alias_connects_two_hops(tmp_path: Path) -> None
     assert reloaded.evidence("en-1").language == "en"
 
 
+def test_same_language_case_variants_share_a_concept_without_alias() -> None:
+    from kgrag.graph import GraphIndex
+    from kgrag.schema import Edge
+
+    chunks = [
+        chunk("zh-1", "循环神经网络具有隐状态。", "zh", "循环神经网络"),
+        chunk("en-1", "Recurrent neural networks have recurrent layers.", "en", "RNN"),
+    ]
+    graph = GraphIndex(chunks, [
+        Edge("隐状态", "used_in", "Recurrent neural networks", "zh-1", 0.8),
+        Edge("recurrent neural networks", "component_of", "recurrent layers", "en-1", 0.9),
+    ], [], {})
+
+    paths = graph.neighbors("隐状态", 2)
+    assert len(paths) == 2
+    assert paths[1].nodes == ("隐状态", "Recurrent neural networks", "recurrent layers")
+    assert paths[1].evidence_chunk_ids == ("zh-1", "en-1")
+
+
 def test_rejects_unverified_or_untraceable_aliases(tmp_path: Path) -> None:
     from kgrag.graph import build_graph
 

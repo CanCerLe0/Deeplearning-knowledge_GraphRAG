@@ -86,6 +86,8 @@ class Evidence:
     chunk: Chunk
     score: float
     path: tuple[str, ...] = ()
+    path_relations: tuple[str, ...] = ()
+    path_evidence_chunk_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

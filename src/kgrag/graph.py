@@ -73,6 +73,10 @@ class GraphIndex:
         for alias in aliases:
             self._canonical[_key(alias["alias"])] = alias["canonical"]
             self._canonical[_key(alias["canonical"])] = alias["canonical"]
+        # Unreviewed cross-language translations stay separate, while spelling
+        # variants of the same label must address one node regardless of case.
+        for label in sorted({name for edge in edges for name in (edge.subject, edge.object)}):
+            self._canonical.setdefault(_key(label), _name(label))
 
     def evidence(self, chunk_id: str) -> Chunk:
         return self.chunks[chunk_id]

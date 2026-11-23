@@ -243,3 +243,57 @@ reviews:
   evidence_chunk_id: 470d1d0cca3401e702cec7d7
   status: rejected
   reason: sequence_mask 和 MaskedSoftmaxCELoss 是代码符号，不是概念节点
+- subject: EncoderBlock
+  predicate: component_of
+  object: Transformer编码器
+  evidence_chunk_id: 89f2b1d7d417dfc32c6d5cb1
+  status: rejected
+  reason: EncoderBlock 是实现类名，不是教材概念节点
+- subject: sequence_mask
+  predicate: used_in
+  object: MaskedSoftmaxCELoss
+  evidence_chunk_id: 358c26c64a17d61483ac9b30
+  status: rejected
+  reason: 两端都是代码符号，不是教材概念节点
+- subject: sequence_mask
+  predicate: used_in
+  object: MaskedSoftmaxCELoss
+  evidence_chunk_id: 6b2a212be553838f735685ac
+  status: rejected
+  reason: 两端都是代码符号，不是教材概念节点
+- subject: 基于位置的前馈网络
+  predicate: component_of
+  object: DecoderBlock
+  evidence_chunk_id: c90ef63c0f3006e41f9cdd29
+  status: rejected
+  reason: DecoderBlock 是实现类名，不是教材概念节点
+- subject: 基于位置的前馈网络
+  predicate: component_of
+  object: EncoderBlock
+  evidence_chunk_id: 59c353088843f9120c94ae04
+  status: rejected
+  reason: EncoderBlock 是实现类名，不是教材概念节点
+- subject: 多头自注意力
+  predicate: component_of
+  object: EncoderBlock
+  evidence_chunk_id: 59c353088843f9120c94ae04
+  status: rejected
+  reason: EncoderBlock 是实现类名，不是教材概念节点
+- subject: 层规范化
+  predicate: component_of
+  object: DecoderBlock
+  evidence_chunk_id: c90ef63c0f3006e41f9cdd29
+  status: rejected
+  reason: DecoderBlock 是实现类名，不是教材概念节点
+- subject: 残差连接
+  predicate: component_of
+  object: EncoderBlock
+  evidence_chunk_id: 59c353088843f9120c94ae04
+  status: rejected
+  reason: EncoderBlock 是实现类名，不是教材概念节点
+- subject: 解码器自注意力
+  predicate: component_of
+  object: DecoderBlock
+  evidence_chunk_id: c90ef63c0f3006e41f9cdd29
+  status: rejected
+  reason: DecoderBlock 是实现类名，不是教材概念节点

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections import Counter
+from dataclasses import asdict
 from pathlib import Path
 
 import yaml
@@ -12,9 +13,10 @@ import yaml
 from .answer import REFUSAL, generate_answer
 from .embed import DenseIndex, FlagEmbedder, load_chunks
 from .fetch import download_url, fetch_sources
-from .graph import PROMPT_VERSION, build_graph
+from .graph import PROMPT_VERSION, GraphIndex, build_graph
 from .ingest import build_corpus, load_sources
 from .llm import DeepSeekChatClient
+from .retrieve import Retriever, load_retrieval_config
 from .schema import Answer
 
 
@@ -44,9 +46,13 @@ def main(argv: list[str] | None = None) -> int:
     build_graph_command.add_argument("--temperature", type=float, default=0.0)
     build_graph_command.add_argument("--max-output-tokens", type=int, default=2048)
     build_graph_command.add_argument("--batch-size", type=int, default=8)
-    ask = commands.add_parser("ask", help="向量检索并依据原文证据生成中文回答")
+    ask = commands.add_parser("ask", help="本地三路检索并依据原文证据生成中文回答")
     ask.add_argument("question")
     ask.add_argument("--index-dir", type=Path, default=Path("data/index/dense"))
+    ask.add_argument("--graph-dir", type=Path, default=Path("data/index/graph"))
+    ask.add_argument("--mode", choices=("dense", "one_hop", "typed_path"), default="dense")
+    ask.add_argument("--token-budget", type=int, default=3000)
+    ask.add_argument("--retrieval-config", type=Path, default=Path("config/retrieval.yaml"))
     ask.add_argument("--top-k", type=int, default=5)
     ask.add_argument("--chat-model", default="deepseek-flash")
     ask.add_argument("--base-url", default="https://api.deepseek.com")
@@ -113,7 +119,11 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         index = DenseIndex.load(args.index_dir, embedder)
-        evidence = index.search(args.question, args.top_k)
+        graph = GraphIndex.load(args.graph_dir) if args.mode != "dense" else None
+        retrieval_config = load_retrieval_config(args.retrieval_config)
+        evidence = Retriever(index, graph, retrieval_config).retrieve(
+            args.question, args.mode, args.top_k, args.token_budget,
+        )
         if evidence:
             client = DeepSeekChatClient(
                 model=args.chat_model, base_url=args.base_url,
@@ -138,6 +148,9 @@ def main(argv: list[str] | None = None) -> int:
                     "language": item.chunk.language,
                     "section": item.chunk.section,
                     "score": item.score,
+                    "path": list(item.path),
+                    "path_relations": list(item.path_relations),
+                    "path_evidence_chunk_ids": list(item.path_evidence_chunk_ids),
                     "url": item.chunk.url,
                     "text": item.chunk.text,
                 }
@@ -155,6 +168,9 @@ def main(argv: list[str] | None = None) -> int:
                 "temperature": args.temperature,
                 "max_output_tokens": args.max_output_tokens,
                 "top_k": args.top_k,
+                "retrieval_mode": args.mode,
+                "token_budget": args.token_budget,
+                "retrieval_config": asdict(retrieval_config),
             },
             "usage": usage,
         }
