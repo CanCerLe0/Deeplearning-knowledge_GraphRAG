@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections import Counter
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import yaml
@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
     ask.add_argument("--base-url", default="https://api.deepseek.com")
     ask.add_argument("--temperature", type=float, default=0.0)
     ask.add_argument("--max-output-tokens", type=int, default=1024)
-    evaluate = commands.add_parser("eval", help="在开发题上运行三路检索与回答并输出 JSONL")
+    evaluate = commands.add_parser("eval", help="运行三路检索与回答并输出 JSONL")
     evaluate.add_argument("--questions", type=Path, default=Path("data/eval/dev.jsonl"))
     evaluate.add_argument("--output", type=Path)
     evaluate.add_argument("--retrieval-only", action="store_true",
@@ -71,6 +71,8 @@ def main(argv: list[str] | None = None) -> int:
     evaluate.add_argument("--top-k", type=int, default=5)
     evaluate.add_argument("--token-budget", type=int, default=3000)
     evaluate.add_argument("--retrieval-config", type=Path, default=Path("config/retrieval.yaml"))
+    evaluate.add_argument("--ablate-path", action="store_true", help="将路径项权重 β 设为 0")
+    evaluate.add_argument("--ablate-types", action="store_true", help="关闭关系类型权重")
     evaluate.add_argument("--chat-model", default="deepseek-flash")
     evaluate.add_argument("--base-url", default="https://api.deepseek.com")
     evaluate.add_argument("--temperature", type=float, default=0.0)
@@ -140,7 +142,12 @@ def main(argv: list[str] | None = None) -> int:
             graph = GraphIndex.load(args.graph_dir) if any(
                 mode != "dense" for mode in args.modes
             ) else None
-            retriever = Retriever(index, graph, load_retrieval_config(args.retrieval_config))
+            retrieval_config = load_retrieval_config(args.retrieval_config)
+            if args.ablate_path:
+                retrieval_config = replace(retrieval_config, path_weight=0.0)
+            if args.ablate_types:
+                retrieval_config = replace(retrieval_config, use_relation_types=False)
+            retriever = Retriever(index, graph, retrieval_config)
             client = None if args.retrieval_only else DeepSeekChatClient(
                 model=args.chat_model, base_url=args.base_url,
                 temperature=args.temperature, max_tokens=args.max_output_tokens,
@@ -151,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             run_eval(args.questions, args.modes, output_path, retriever=retriever,
                      client=client, k=args.top_k, token_budget=args.token_budget)
-            print(f"开发题评测完成，结果：{output_path}")
+            print(f"评测完成，结果：{output_path}")
             return 0
         graph = GraphIndex.load(args.graph_dir) if args.mode != "dense" else None
         retrieval_config = load_retrieval_config(args.retrieval_config)

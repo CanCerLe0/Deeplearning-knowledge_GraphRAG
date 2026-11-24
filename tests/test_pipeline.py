@@ -251,3 +251,29 @@ def test_eval_rejects_malformed_development_labels(tmp_path: Path, change: dict)
     with pytest.raises(ValueError):
         run_eval(questions, ["dense"], tmp_path / "out.jsonl",
                  retriever=Retriever(dense), client=AnswerClient())
+
+
+def test_eval_cli_records_path_and_type_ablations(tmp_path: Path):
+    from kgrag.cli import main
+
+    _, _, chunks = _fixture_corpus(tmp_path)
+    dense_dir = tmp_path / "dense"
+    DenseIndex.build(chunks, TopicEmbedder(), dense_dir)
+    graph_dir = tmp_path / "graph"
+    GraphIndex(chunks, [], [], {}).save(graph_dir, manifest={"format_version": 1})
+    questions = tmp_path / "questions.jsonl"
+    questions.write_text(json.dumps({
+        "id": "q", "question": "多头注意力是什么？", "type": "single_concept",
+        "gold_answer": "一种注意力机制。", "required_evidence_groups": [[chunks[0].chunk_id]],
+    }, ensure_ascii=False) + "\n", encoding="utf-8")
+    output = tmp_path / "ablated.jsonl"
+
+    with patch("kgrag.cli.FlagEmbedder", return_value=TopicEmbedder()):
+        assert main(["eval", "--retrieval-only", "--questions", str(questions),
+                     "--index-dir", str(dense_dir), "--graph-dir", str(graph_dir),
+                     "--output", str(output), "--modes", "typed_path",
+                     "--ablate-path", "--ablate-types"]) == 0
+
+    row = json.loads(output.read_text(encoding="utf-8"))
+    assert row["run_config"]["retrieval_config"]["path_weight"] == 0
+    assert row["run_config"]["retrieval_config"]["use_relation_types"] is False

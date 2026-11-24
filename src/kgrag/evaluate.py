@@ -19,6 +19,130 @@ MODES = ("dense", "one_hop", "typed_path")
 QUESTION_TYPES = ("single_concept", "multi_hop", "comparison", "unanswerable")
 
 
+def _validated_groups(required_groups: list[set[str]]) -> list[set[str]]:
+    groups = [set(group) for group in required_groups]
+    if any(not group for group in groups):
+        raise ValueError("必需证据组不能为空")
+    return groups
+
+
+def recall_at_k(
+    required_groups: list[set[str]], retrieved: list[str], k: int,
+) -> float | None:
+    """返回 Top-k 命中的论点比例；不可回答题返回 None。"""
+    if k < 1:
+        raise ValueError("k 必须为正整数")
+    groups = _validated_groups(required_groups)
+    if not groups:
+        return None
+    found = set(retrieved[:k])
+    return sum(bool(group & found) for group in groups) / len(groups)
+
+
+def complete_evidence_hit(
+    required_groups: list[set[str]], retrieved: list[str], k: int,
+) -> bool | None:
+    """所有必需论点都有原文片段命中时为真。"""
+    if k < 1:
+        raise ValueError("k 必须为正整数")
+    groups = _validated_groups(required_groups)
+    if not groups:
+        return None
+    found = set(retrieved[:k])
+    return all(bool(group & found) for group in groups)
+
+
+def summarize_retrieval(questions: list[dict], rows: list[dict], k: int = 5) -> dict:
+    """按模式、题型及实际检出证据语言汇总；拒答题不参与召回平均。"""
+    by_id = {item["id"]: item for item in questions}
+    if len(by_id) != len(questions):
+        raise ValueError("题目 ID 重复")
+    grouped: dict[str, dict[str, list[dict]]] = {}
+    seen = set()
+    for row in rows:
+        key = (row["question_id"], row["mode"])
+        if key in seen or key[0] not in by_id:
+            raise ValueError("评测结果含重复或未知题目")
+        seen.add(key)
+        question = by_id[key[0]]
+        groups = [set(group) for group in question["required_evidence_groups"]]
+        scored = {
+            "question_id": key[0], "question_type": question["type"],
+            "recall": recall_at_k(groups, row["retrieved_chunk_ids"], k),
+            "complete": complete_evidence_hit(groups, row["retrieved_chunk_ids"], k),
+            "group_count": len(groups),
+            "group_hits": sum(bool(group.intersection(row["retrieved_chunk_ids"][:k]))
+                              for group in groups),
+            "languages": row["evidence_languages"],
+            "latency_ms": row["latency_ms"],
+            "usage": row.get("usage", {}),
+            "missing_group_indexes": [index for index, group in enumerate(groups)
+                                      if not group.intersection(row["retrieved_chunk_ids"][:k])],
+        }
+        mode = grouped.setdefault(key[1], {})
+        for group_name in ("overall", question["type"]):
+            mode.setdefault(group_name, []).append(scored)
+        language = "+".join(sorted(row["evidence_languages"])) or "none"
+        mode.setdefault("language:" + language, []).append(scored)
+        gold_language = "+".join(sorted(question.get("gold_evidence_languages", []))) or "none"
+        mode.setdefault("gold_language:" + gold_language, []).append(scored)
+
+    for mode, groups in grouped.items():
+        missing = set(by_id) - {item["question_id"] for item in groups["overall"]}
+        if missing:
+            raise ValueError(f"模式 {mode} 缺少题目结果：{sorted(missing)}")
+
+    def aggregate(items: list[dict]) -> dict:
+        answerable = [item for item in items if item["recall"] is not None]
+        return {
+            "question_count": len(items),
+            "recall_question_count": len(answerable),
+            "unanswerable_count": len(items) - len(answerable),
+            f"recall_at_{k}": (
+                sum(item["recall"] for item in answerable) / len(answerable)
+                if answerable else None
+            ),
+            f"group_micro_recall_at_{k}": (
+                sum(item["group_hits"] for item in answerable) /
+                sum(item["group_count"] for item in answerable)
+                if answerable else None
+            ),
+            "complete_evidence_rate": (
+                sum(item["complete"] for item in answerable) / len(answerable)
+                if answerable else None
+            ),
+            "mean_latency_ms": sum(item["latency_ms"] for item in items) / len(items),
+            "total_usage": {
+                name: sum(item["usage"].get(name, 0) for item in items)
+                for name in ("prompt_tokens", "completion_tokens", "total_tokens")
+            },
+        }
+
+    return {
+        mode: {
+            "overall": aggregate(groups["overall"]),
+            "by_question_type": {
+                kind: aggregate(items) for kind, items in groups.items()
+                if kind in QUESTION_TYPES
+            },
+            "by_retrieved_language": {
+                name.removeprefix("language:"): aggregate(items)
+                for name, items in groups.items() if name.startswith("language:")
+            },
+            "by_gold_language": {
+                name.removeprefix("gold_language:"): aggregate(items)
+                for name, items in groups.items() if name.startswith("gold_language:")
+            },
+            "failure_cases": [
+                {"question_id": item["question_id"],
+                 "missing_group_indexes": item["missing_group_indexes"]}
+                for item in groups["overall"] if item["missing_group_indexes"]
+            ],
+        }
+        for mode, groups in grouped.items()
+    }
+
+
 def _json_hash(value: object) -> str:
     data = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
