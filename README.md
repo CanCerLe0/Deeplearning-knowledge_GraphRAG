@@ -58,7 +58,7 @@ python -m kgrag.cli eval --retrieval-only --questions data/eval/dev.jsonl --outp
 python -m kgrag.cli eval --questions data/eval/dev.jsonl --output data/runs/dev_eval.jsonl
 ```
 
-`--retrieval-only` 不创建生成客户端，输出不含教材正文，`answer` 为 `null`；完整评测输出逐题记录模式、片段 ID、语言、固定版本链接、答案、引用、检索及生成耗时、API token 用量和运行配置。两种输出均包含题集、向量索引和图审核状态的指纹。`data/runs/` 是本地输出，不提交；开发题只用于调试和初评，不代表封存测试集的最终效果。当前仅完成的检索层初评见[开发集结果](docs/results.md)，答案与拒答评测待运行。检索初评需先完成下载、入库、索引和构图；完整评测还需设置密钥。
+`--retrieval-only` 不创建生成客户端，输出不含教材正文，`answer` 为 `null`；完整评测输出逐题记录模式、片段 ID、语言、固定版本链接、答案、引用、检索及生成耗时、API token 用量和运行配置。两种输出均包含题集、向量索引和图审核状态的指纹。`data/runs/` 是本地输出，不提交；开发题只用于调试和初评，不代表封存测试集的最终效果。检索与回答初评见[开发集结果](docs/results.md)，正式封存测试与盲评仍待完成。检索初评需先完成下载、入库、索引和构图；完整评测还需设置密钥。
 
 新增自写 Markdown 时，把文件放入 `data/sample/`，再在 `config/sources.yaml` 添加 `kind: local_markdown`、唯一 `source_id`、相对仓库根目录的 `path`、`title`、`language` 和 `license_note`；随后重新运行 `ingest`、`build-index` 和 `build-graph`。未改变的旧片段 ID 和原链接保持稳定。`fetch` 对校验通过的已下载教材文件可离线复用，`ingest` 与 `build-index` 本身不调用生成 API。
 
