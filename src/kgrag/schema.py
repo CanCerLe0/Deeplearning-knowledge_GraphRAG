@@ -88,6 +88,7 @@ class Evidence:
     path: tuple[str, ...] = ()
     path_relations: tuple[str, ...] = ()
     path_evidence_chunk_ids: tuple[str, ...] = ()
+    path_directions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -75,6 +75,25 @@ def test_typed_path_can_surface_two_hop_english_evidence_from_chinese_seed():
     assert target.path_evidence_chunk_ids[-1] == "target"
 
 
+def test_seed_text_can_start_graph_expansion_without_carrying_edge_evidence():
+    from kgrag.retrieve import RetrievalConfig, Retriever
+
+    chunks = [
+        chunk("seed", "隐状态是循环网络的内部信息。", "zh", "循环网络"),
+        chunk("target", "Hidden state is used in recurrent layers.", "en", "RNN layers"),
+    ]
+    dense = DenseIndex(chunks, np.asarray([[1., 0.], [0., 1.]]), QueryEmbedder())
+    graph = GraphIndex(chunks, [
+        Edge("隐状态", "used_in", "recurrent layers", "target", 0.95),
+    ], [], {})
+
+    results = Retriever(dense, graph, RetrievalConfig(seed_k=1)).retrieve(
+        "隐状态用于什么？", "typed_path", 2, 200)
+    assert "target" in ids(results)
+    target = next(item for item in results if item.chunk.chunk_id == "target")
+    assert target.path == ("隐状态", "recurrent layers")
+
+
 def test_dense_mode_does_not_access_graph():
     from kgrag.retrieve import RetrievalConfig, Retriever
 
@@ -244,3 +263,47 @@ def test_cli_ask_uses_typed_path_and_reports_provenance(tmp_path):
     assert target["path"][-1] == "recurrent layers"
     assert target["path_evidence_chunk_ids"][-1] == "target"
     assert result["run_config"]["retrieval_mode"] == "typed_path"
+
+
+def test_reverse_traversal_keeps_original_relation_direction_in_evidence_and_cli(tmp_path):
+    from kgrag.cli import main
+    from kgrag.retrieve import RetrievalConfig, Retriever
+
+    chunks = [
+        chunk("seed", "循环神经网络的结构。", "zh", "循环网络"),
+        chunk("target", "Hidden state is a component of recurrent neural networks.", "en", "RNN"),
+    ]
+    dense = DenseIndex(chunks, np.asarray([[1., 0.], [0., 1.]]), QueryEmbedder())
+    graph = GraphIndex(chunks, [
+        Edge("隐状态", "component_of", "循环神经网络", "target", 0.95),
+    ], [], {})
+    query = "循环神经网络中的隐状态是什么？"
+    results = Retriever(dense, graph, RetrievalConfig(seed_k=1)).retrieve(
+        query, "one_hop", 2, 200)
+    target = next(item for item in results if item.chunk.chunk_id == "target")
+    assert target.path == ("循环神经网络", "隐状态")
+    assert target.path_relations == ("component_of",)
+    assert target.path_directions == ("reverse",)
+
+    class FakeClient:
+        last_model = "fixture-v1"
+        last_usage = {}
+
+        def __init__(self, **kwargs):
+            pass
+
+        def complete_json(self, messages):
+            return {"answer": "隐状态是网络的一部分。[target]", "citation_chunk_ids": ["target"]}
+
+    output = StringIO()
+    with patch("kgrag.cli.FlagEmbedder", return_value=QueryEmbedder()), patch(
+        "kgrag.cli.DenseIndex.load", return_value=dense
+    ), patch("kgrag.cli.GraphIndex.load", return_value=graph), patch(
+        "kgrag.cli.DeepSeekChatClient", FakeClient
+    ), redirect_stdout(output):
+        assert main(["ask", query, "--mode", "one_hop", "--top-k", "2",
+                     "--token-budget", "200", "--index-dir", str(tmp_path),
+                     "--graph-dir", str(tmp_path)]) == 0
+    payload = json.loads(output.getvalue())
+    target_json = next(item for item in payload["evidence"] if item["chunk_id"] == "target")
+    assert target_json["path_directions"] == ["reverse"]

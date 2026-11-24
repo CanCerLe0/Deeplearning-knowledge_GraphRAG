@@ -144,6 +144,10 @@ class Retriever:
                 for edge in self.graph.edges if edge.evidence_chunk_id in seed_ids
                 for label in (edge.subject, edge.object)
             }
+            seed_concepts.update(
+                concept for item in candidates
+                for concept in self._mentioned_concepts(item.chunk.text)
+            )
             mentioned_seeds = seed_concepts.intersection(self._mentioned_concepts(question))
             if mentioned_seeds:
                 seed_concepts = mentioned_seeds
@@ -189,6 +193,7 @@ class Retriever:
                 item.chunk, score, path[1].nodes if path else (),
                 path[1].relations if path else (),
                 path[1].evidence_chunk_ids if path else (),
+                path[1].directions if path else (),
             ))
         scored.sort(key=lambda item: (-item.score, item.chunk.chunk_id))
 

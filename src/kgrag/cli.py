@@ -151,6 +151,7 @@ def main(argv: list[str] | None = None) -> int:
                     "path": list(item.path),
                     "path_relations": list(item.path_relations),
                     "path_evidence_chunk_ids": list(item.path_evidence_chunk_ids),
+                    "path_directions": list(item.path_directions),
                     "url": item.chunk.url,
                     "text": item.chunk.text,
                 }
