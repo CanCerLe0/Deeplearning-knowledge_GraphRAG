@@ -12,6 +12,7 @@ import yaml
 
 from .answer import REFUSAL, generate_answer
 from .embed import DenseIndex, FlagEmbedder, load_chunks
+from .evaluate import run_eval
 from .fetch import download_url, fetch_sources
 from .graph import PROMPT_VERSION, GraphIndex, build_graph
 from .ingest import build_corpus, load_sources
@@ -58,7 +59,21 @@ def main(argv: list[str] | None = None) -> int:
     ask.add_argument("--base-url", default="https://api.deepseek.com")
     ask.add_argument("--temperature", type=float, default=0.0)
     ask.add_argument("--max-output-tokens", type=int, default=1024)
-    for command in (build_index, ask):
+    evaluate = commands.add_parser("eval", help="在开发题上运行三路检索与回答并输出 JSONL")
+    evaluate.add_argument("--questions", type=Path, default=Path("data/eval/dev.jsonl"))
+    evaluate.add_argument("--output", type=Path, default=Path("data/runs/dev_eval.jsonl"))
+    evaluate.add_argument("--index-dir", type=Path, default=Path("data/index/dense"))
+    evaluate.add_argument("--graph-dir", type=Path, default=Path("data/index/graph"))
+    evaluate.add_argument("--modes", nargs="+", choices=("dense", "one_hop", "typed_path"),
+                          default=["dense", "one_hop", "typed_path"])
+    evaluate.add_argument("--top-k", type=int, default=5)
+    evaluate.add_argument("--token-budget", type=int, default=3000)
+    evaluate.add_argument("--retrieval-config", type=Path, default=Path("config/retrieval.yaml"))
+    evaluate.add_argument("--chat-model", default="deepseek-flash")
+    evaluate.add_argument("--base-url", default="https://api.deepseek.com")
+    evaluate.add_argument("--temperature", type=float, default=0.0)
+    evaluate.add_argument("--max-output-tokens", type=int, default=1024)
+    for command in (build_index, ask, evaluate):
         command.add_argument("--embedding-model", default="BAAI/bge-m3")
         command.add_argument("--embedding-revision", default="main")
         command.add_argument("--embedding-class", default=None)
@@ -105,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    if args.command in ("build-index", "ask"):
+    if args.command in ("build-index", "ask", "eval"):
         embedder = FlagEmbedder(
             model_id=args.embedding_model, revision=args.embedding_revision,
             model_class=args.embedding_class, pooling_method=args.pooling_method,
@@ -119,6 +134,19 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         index = DenseIndex.load(args.index_dir, embedder)
+        if args.command == "eval":
+            graph = GraphIndex.load(args.graph_dir) if any(
+                mode != "dense" for mode in args.modes
+            ) else None
+            retriever = Retriever(index, graph, load_retrieval_config(args.retrieval_config))
+            client = DeepSeekChatClient(
+                model=args.chat_model, base_url=args.base_url,
+                temperature=args.temperature, max_tokens=args.max_output_tokens,
+            )
+            run_eval(args.questions, args.modes, args.output, retriever=retriever,
+                     client=client, k=args.top_k, token_budget=args.token_budget)
+            print(f"开发题评测完成，结果：{args.output}")
+            return 0
         graph = GraphIndex.load(args.graph_dir) if args.mode != "dense" else None
         retrieval_config = load_retrieval_config(args.retrieval_config)
         evidence = Retriever(index, graph, retrieval_config).retrieve(

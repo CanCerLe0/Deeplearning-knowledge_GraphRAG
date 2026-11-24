@@ -2,11 +2,11 @@
 
 [简体中文](README.md) | [English](README.en.md)
 
-This repository is being built as a local graph-enhanced RAG experiment using Chinese and English Markdown from *Dive into Deep Learning*. Dense retrieval, unweighted one-hop graph expansion, and relation-aware retrieval up to two hops are implemented, with source passages grounding answers in Chinese; formal comparative evaluation is still pending.
+This repository is being built as a local graph-enhanced RAG experiment using Chinese and English Markdown from *Dive into Deep Learning*. Dense retrieval, unweighted one-hop graph expansion, and relation-aware retrieval up to two hops are implemented, with source passages grounding answers in Chinese; 12 development questions and a three-mode preliminary evaluation command are available, while the held-out test remains pending.
 
 The [implementation plan](docs/图谱增强RAG实施计划.md), [design](docs/图谱增强RAG项目设计草案.md), and [bilingual design supplement](docs/双语本地Markdown设计补充.md) describe the research question, data workflow, and acceptance criteria.
 
-The repository now contains project documents, original bilingual samples, pinned textbook downloads, offline Markdown ingestion, a unified bilingual vector index, a reviewable concept graph, and three retrieval modes with source-grounded Chinese answers. `fetch` downloads and verifies listed files; `ingest` chunks them offline; `build-index` creates a local NumPy cosine index with a local embedding model; `build-graph` extracts relations through a configurable DeepSeek-compatible API and reuses a local cache; `ask` retrieves locally in the selected mode, then uses that API to generate a Chinese answer. Development questions, formal evaluation, and the web demo are still pending. Third-party textbook files and generated indexes stay local and are not committed.
+The repository now contains project documents, original bilingual samples, pinned textbook downloads, offline Markdown ingestion, a unified bilingual vector index, a reviewable concept graph, and three retrieval modes with source-grounded Chinese answers. `fetch` downloads and verifies listed files; `ingest` chunks them offline; `build-index` creates a local NumPy cosine index with a local embedding model; `build-graph` extracts relations through a configurable DeepSeek-compatible API and reuses a local cache; `ask` retrieves locally in the selected mode, then uses that API to generate a Chinese answer; `eval` compares the three modes on 12 development questions. The held-out test, formal evaluation, and web demo remain pending. Third-party textbook files and generated indexes stay local and are not committed.
 
 ## RAG retrieval stages and current strategy
 
@@ -48,6 +48,18 @@ python -m kgrag.cli ask "束搜索与贪心搜索有什么区别？" --mode type
 `ask` loads `.env` from the project root automatically, while an existing environment variable takes precedence. Keep `.env.example` empty of real secrets. `.gitignore` excludes `.env`; check staged files with `git status` before committing, and never force-add a key file. If a key was pushed, revoke and replace it with the provider immediately.
 
 `ask` supports `dense` (default), `one_hop`, and `typed_path`, all using the same vector index. Its output includes evidence languages, source links, concept paths with per-hop relations, evidence IDs, and `path_directions` (`forward`/`reverse` indicates traversal relative to the original directed relation), plus a Chinese answer citing passage IDs for individual claims. `config/retrieval.yaml` holds development-stage path weights and other parameters. `--token-budget` uses the same approximate mixed Chinese and English count in all three modes and includes the system prompt, question, evidence text, and metadata actually sent. Formal evaluation still needs the selected generation model's tokenizer and its message-specific overhead. The program checks citation IDs and markers; whether a passage actually supports a claim still requires human review. It returns an insufficient-evidence response when there is no evidence or no valid citation. See the [graph extraction audit](docs/图谱抽取抽查.md). If model memory is limited, select a smaller multilingual FlagEmbedding model with `--embedding-model`, specify its model type with `--embedding-class` and, if needed, its pooling method with `--pooling-method`; rebuild the index with the same configuration.
+
+## Development evaluation and corpus extension
+
+`data/eval/dev.jsonl` contains 12 development questions checked against the current pinned corpus and default chunking settings: single-concept, multi-hop, comparison, and unanswerable questions. Each required evidence group lists candidate passage IDs that support the same claim. After adding sources or changing chunking, recheck these IDs and the boundary of unanswerable questions. All three modes share the index, retrieval configuration, Top-k, context budget, and generation settings:
+
+```bash
+python -m kgrag.cli eval --questions data/eval/dev.jsonl --output data/runs/dev_eval.jsonl
+```
+
+The JSONL output records each question's mode, passage IDs, languages, pinned source links, answer, citations, retrieval and generation latency, API token usage, and run configuration. `data/runs/` is local output and is not committed. Development questions are for debugging and preliminary evaluation, not final held-out conclusions. See the [development results](docs/results.md) for the completed retrieval-only run; answer and refusal evaluation is pending. Complete the download, ingestion, indexing, graph build, and key setup steps above before running the full evaluation.
+
+To add original Markdown, place it in `data/sample/` and add an entry to `config/sources.yaml` with `kind: local_markdown`, a unique `source_id`, a repository-root-relative `path`, `title`, `language`, and `license_note`; then rerun `ingest`, `build-index`, and `build-graph`. Unchanged prior passage IDs and links remain stable. `fetch` reuses locally verified textbook files offline, and `ingest` and `build-index` do not call the generation API.
 
 The project's original code is licensed under [MIT](LICENSE). That license does not cover the *Dive into Deep Learning* textbook content; consult the relevant versions of the [Chinese repository](https://github.com/d2l-ai/d2l-zh) and [English repository](https://github.com/d2l-ai/d2l-en) before using that content.
 
