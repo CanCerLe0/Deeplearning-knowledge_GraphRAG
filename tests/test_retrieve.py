@@ -110,6 +110,38 @@ def test_graph_edge_without_indexed_evidence_never_enters_results():
     assert "missing" not in ids(results)
 
 
+def test_two_hop_path_requires_indexed_evidence_for_every_edge():
+    from kgrag.retrieve import RetrievalConfig, Retriever
+
+    chunks = [
+        chunk("seed", "概念乙的基础说明。", "zh", "基础"),
+        chunk("target", "Concept D is explained here.", "en", "Advanced"),
+    ]
+    dense = DenseIndex(chunks, np.asarray([[1., 0.], [0., 1.]]), QueryEmbedder())
+    graph = GraphIndex(chunks, [
+        Edge("甲", "used_in", "乙", "seed", 0.9),
+        Edge("乙", "used_in", "丙", "missing", 1.0),
+        Edge("丙", "used_in", "丁", "target", 1.0),
+    ], [], {})
+
+    results = Retriever(dense, graph, RetrievalConfig(seed_k=1)).retrieve(
+        "乙如何用于丁？", "typed_path", 2, 200)
+    assert ids(results) == ["seed"]
+
+
+def test_bilingual_near_duplicates_with_different_section_titles_share_limit():
+    from kgrag.retrieve import Retriever
+
+    chunks = [
+        chunk("zh", "隐状态用于循环层。", "zh", "循环网络"),
+        chunk("en", "Hidden state in recurrent layers.", "en", "Recurrent Neural Networks"),
+    ]
+    dense = DenseIndex(chunks, np.asarray([[1., 0.], [1., 0.]]), QueryEmbedder())
+
+    results = Retriever(dense).retrieve("隐状态与循环层", "dense", 2, 200)
+    assert len(results) == 1
+
+
 def test_path_ablation_removes_graph_boost():
     from kgrag.retrieve import RetrievalConfig, Retriever
 

@@ -150,7 +150,10 @@ class Retriever:
             for concept in sorted(seed_concepts):
                 for path in self.graph.neighbors(concept, 1 if mode == "one_hop" else 2):
                     evidence_id = path.evidence_chunk_ids[-1]
-                    if evidence_id not in by_id or evidence_id not in self.graph.chunks:
+                    if any(
+                        hop_id not in by_id or hop_id not in self.graph.chunks
+                        for hop_id in path.evidence_chunk_ids
+                    ):
                         continue
                     score = (self.config.one_hop_bonus if mode == "one_hop"
                              else self._path_score(path, question))
@@ -208,7 +211,6 @@ class Retriever:
             index = index_by_id[chunk.chunk_id]
             if any(
                 other.chunk.language != chunk.language and
-                _key(other.chunk.section) == section and
                 float(np.dot(self.dense.vectors[index],
                              self.dense.vectors[index_by_id[other.chunk.chunk_id]])) >=
                 self.config.bilingual_duplicate_cosine
