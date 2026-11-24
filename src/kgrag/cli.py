@@ -61,7 +61,9 @@ def main(argv: list[str] | None = None) -> int:
     ask.add_argument("--max-output-tokens", type=int, default=1024)
     evaluate = commands.add_parser("eval", help="在开发题上运行三路检索与回答并输出 JSONL")
     evaluate.add_argument("--questions", type=Path, default=Path("data/eval/dev.jsonl"))
-    evaluate.add_argument("--output", type=Path, default=Path("data/runs/dev_eval.jsonl"))
+    evaluate.add_argument("--output", type=Path)
+    evaluate.add_argument("--retrieval-only", action="store_true",
+                          help="仅运行本地检索并输出不含教材正文的逐题记录")
     evaluate.add_argument("--index-dir", type=Path, default=Path("data/index/dense"))
     evaluate.add_argument("--graph-dir", type=Path, default=Path("data/index/graph"))
     evaluate.add_argument("--modes", nargs="+", choices=("dense", "one_hop", "typed_path"),
@@ -139,13 +141,17 @@ def main(argv: list[str] | None = None) -> int:
                 mode != "dense" for mode in args.modes
             ) else None
             retriever = Retriever(index, graph, load_retrieval_config(args.retrieval_config))
-            client = DeepSeekChatClient(
+            client = None if args.retrieval_only else DeepSeekChatClient(
                 model=args.chat_model, base_url=args.base_url,
                 temperature=args.temperature, max_tokens=args.max_output_tokens,
             )
-            run_eval(args.questions, args.modes, args.output, retriever=retriever,
+            output_path = args.output or Path(
+                "data/runs/dev_retrieval.jsonl" if args.retrieval_only else
+                "data/runs/dev_eval.jsonl"
+            )
+            run_eval(args.questions, args.modes, output_path, retriever=retriever,
                      client=client, k=args.top_k, token_budget=args.token_budget)
-            print(f"开发题评测完成，结果：{args.output}")
+            print(f"开发题评测完成，结果：{output_path}")
             return 0
         graph = GraphIndex.load(args.graph_dir) if args.mode != "dense" else None
         retrieval_config = load_retrieval_config(args.retrieval_config)

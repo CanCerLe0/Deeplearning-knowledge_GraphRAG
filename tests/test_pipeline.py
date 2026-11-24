@@ -127,6 +127,9 @@ def test_offline_rebuild_with_local_markdown_preserves_old_ids_and_links(tmp_pat
     evidence = Retriever(dense).retrieve("新增局部文档中的新知识是什么？", "dense", 1, 1000)
     assert evidence[0].chunk.source_id == "local-new"
     assert evidence[0].chunk.url is None
+    assert evidence[0].chunk.source_path == "data/sample/new.md"
+    assert evidence[0].chunk.line_start >= 1
+    assert evidence[0].chunk.line_end >= evidence[0].chunk.line_start
 
 
 def test_no_evidence_refuses_without_calling_generation(tmp_path: Path):
@@ -183,3 +186,68 @@ def test_cli_eval_runs_all_modes_from_saved_indexes(tmp_path: Path):
     assert len(rows) == 3
     assert {row["mode"] for row in rows} == {"dense", "one_hop", "typed_path"}
     assert all(row["run_config"]["top_k"] == 2 for row in rows)
+
+    retrieval_output = tmp_path / "retrieval_only.jsonl"
+    with patch("kgrag.cli.FlagEmbedder", return_value=TopicEmbedder()), patch(
+        "kgrag.cli.DeepSeekChatClient", side_effect=AssertionError("不应创建生成客户端")
+    ):
+        assert main(["eval", "--questions", str(questions), "--output", str(retrieval_output),
+                     "--index-dir", str(dense_dir), "--graph-dir", str(graph_dir),
+                     "--retrieval-only"]) == 0
+    retrieval_rows = [json.loads(line) for line in retrieval_output.read_text().splitlines()]
+    assert len(retrieval_rows) == 3
+    assert all(row["answer"] is None for row in retrieval_rows)
+
+
+def test_retrieval_only_records_reproducible_fingerprints_without_generation(tmp_path: Path):
+    from kgrag.evaluate import run_eval
+
+    _, _, chunks = _fixture_corpus(tmp_path)
+    dense = DenseIndex.build(chunks, TopicEmbedder(), tmp_path / "dense")
+    en_id = next(item.chunk_id for item in chunks if item.language == "en")
+    graph = GraphIndex(chunks, [Edge("Multi-head attention", "used_in", "Transformer",
+                                     en_id, 0.9)], [], {})
+    question = {"id": "q1", "question": "多头注意力用于哪里？", "type": "single_concept",
+                "gold_answer": "用于 Transformer。", "required_evidence_groups": [[en_id]]}
+    questions = tmp_path / "questions.jsonl"
+    questions.write_text(json.dumps(question, ensure_ascii=False) + "\n", encoding="utf-8")
+    output = tmp_path / "retrieval.jsonl"
+
+    run_eval(questions, ["dense", "typed_path"], output,
+             retriever=Retriever(dense, graph), client=None, k=2)
+
+    rows = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 2
+    assert all(row["answer"] is None and row["usage"] == {} for row in rows)
+    assert all("text" not in entry for row in rows for entry in row["evidence"])
+    assert all(row["run_config"]["questions_sha256"] == hashlib.sha256(
+        questions.read_bytes()).hexdigest() for row in rows)
+    assert all(len(row["run_config"]["dense_sha256"]) == 64 for row in rows)
+    assert all(len(row["run_config"]["graph_sha256"]) == 64 for row in rows)
+    assert all(len(row["run_config"]["answer_prompt_sha256"]) == 64 for row in rows)
+    assert rows[1]["run_config"]["embedding_batch_size"] is None
+    previous_graph_hash = rows[1]["run_config"]["graph_sha256"]
+    graph.edges.append(Edge("Transformer", "used_in", "多头注意力", en_id, 0.8))
+    run_eval(questions, ["dense"], output, retriever=Retriever(dense, graph), client=None)
+    changed = json.loads(output.read_text(encoding="utf-8"))
+    assert changed["run_config"]["graph_sha256"] != previous_graph_hash
+
+
+@pytest.mark.parametrize("change", [
+    {"type": "unknown"},
+    {"gold_answer": ""},
+    {"required_evidence_groups": []},
+])
+def test_eval_rejects_malformed_development_labels(tmp_path: Path, change: dict):
+    from kgrag.evaluate import run_eval
+
+    _, _, chunks = _fixture_corpus(tmp_path)
+    dense = DenseIndex.build(chunks, TopicEmbedder(), tmp_path / "dense")
+    question = {"id": "q1", "question": "有何用途？", "type": "single_concept",
+                "gold_answer": "答案。", "required_evidence_groups": [[chunks[0].chunk_id]]}
+    question.update(change)
+    questions = tmp_path / "questions.jsonl"
+    questions.write_text(json.dumps(question, ensure_ascii=False) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        run_eval(questions, ["dense"], tmp_path / "out.jsonl",
+                 retriever=Retriever(dense), client=AnswerClient())

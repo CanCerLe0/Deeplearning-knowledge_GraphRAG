@@ -54,10 +54,11 @@ python -m kgrag.cli ask "束搜索与贪心搜索有什么区别？" --mode type
 `data/eval/dev.jsonl` 有 12 道按当前固定语料与默认分片配置核查的开发题：单概念、多跳、比较和不可回答题。每个必需证据组列出可以支持同一论点的候选片段 ID；新增语料或更改分片参数后，应重新核查这些 ID 与不可回答题边界。三路初评共用索引、检索配置、Top-k、上下文预算与生成参数：
 
 ```bash
+python -m kgrag.cli eval --retrieval-only --questions data/eval/dev.jsonl --output data/runs/dev_retrieval.jsonl
 python -m kgrag.cli eval --questions data/eval/dev.jsonl --output data/runs/dev_eval.jsonl
 ```
 
-输出逐题记录模式、片段 ID、语言、固定版本链接、答案、引用、检索及生成耗时、API token 用量和运行配置。`data/runs/` 是本地输出，不提交；开发题只用于调试和初评，不代表封存测试集的最终效果。当前仅完成的检索层初评见[开发集结果](docs/results.md)，答案与拒答评测待运行。运行完整评测前需先完成上述下载、入库、索引、构图和密钥设置。
+`--retrieval-only` 不创建生成客户端，输出不含教材正文，`answer` 为 `null`；完整评测输出逐题记录模式、片段 ID、语言、固定版本链接、答案、引用、检索及生成耗时、API token 用量和运行配置。两种输出均包含题集、向量索引和图审核状态的指纹。`data/runs/` 是本地输出，不提交；开发题只用于调试和初评，不代表封存测试集的最终效果。当前仅完成的检索层初评见[开发集结果](docs/results.md)，答案与拒答评测待运行。检索初评需先完成下载、入库、索引和构图；完整评测还需设置密钥。
 
 新增自写 Markdown 时，把文件放入 `data/sample/`，再在 `config/sources.yaml` 添加 `kind: local_markdown`、唯一 `source_id`、相对仓库根目录的 `path`、`title`、`language` 和 `license_note`；随后重新运行 `ingest`、`build-index` 和 `build-graph`。未改变的旧片段 ID 和原链接保持稳定。`fetch` 对校验通过的已下载教材文件可离线复用，`ingest` 与 `build-index` 本身不调用生成 API。
 

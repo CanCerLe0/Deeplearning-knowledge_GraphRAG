@@ -10,6 +10,12 @@
 
 这里的“命中”指 Top-5 中至少有一个片段 ID 落入人工核查的同一论点候选组。“完整证据命中”要求一道题的所有必需组均命中。英文片段计数仅表示进入上下文，不表示答案引用了英文。三种模式共用 555 个片段的双语索引、`BAAI/bge-m3` 模型版本 `5617a9f61b028005a4858fdac845db406aefb181`、本地图索引、`config/retrieval.yaml`、Top-5 和 3000 的近似消息 token 预算；本次在 CPU 上运行。
 
+[逐题检索轨迹](../data/eval/dev_retrieval_trace.json)只保存 Top-5 片段 ID、英文片段 ID、逐组命中布尔值和运行配置，不含教材正文。题集 SHA256 为 `8fff8b024fb38fa53ad37fdf9412bd39ecd0fc835f28af03c64d77c07b767970`，向量索引指纹为 `65151e53aca9941c923c73334ee00d56364c3b26128760071cd015423330df9b`，图边与审核状态指纹为 `7b637f1f987421d69f9d462f2e613f34ad467fce20e78d6c197ec5632571ed60`。读者可在下载、校验、入库、构建索引和图谱后运行以下本地命令复核；若重新抽取或审核图边，图指纹可能不同，结果需重新统计：
+
+```bash
+python -m kgrag.cli eval --retrieval-only --questions data/eval/dev.jsonl --output data/runs/dev_retrieval.jsonl --embedding-revision 5617a9f61b028005a4858fdac845db406aefb181 --device cpu
+```
+
 初评暴露的具体问题：`dense` 对 `dev-01` 的查询/键/值证据未命中；`one_hop` 命中该组。`typed_path` 虽让更多英文片段进入 Top-5，但在 `dev-02`、`dev-03`、`dev-10` 等题挤掉了所需证据，因此目前不能以英文片段数量推断检索质量提升。题目与候选证据组仍可在开发期复核，参数也只能在开发题上调整；正式比较须等封存测试集建立后进行。
 
 答案生成及其引用、拒答、延迟和 API 用量的三路初评尚未完成。`python -m kgrag.cli eval --questions data/eval/dev.jsonl --output data/runs/dev_eval.jsonl` 可在有生成 API 访问权限的环境中输出逐题 JSONL；该输出位于被忽略的 `data/runs/`，不会随仓库发布。
