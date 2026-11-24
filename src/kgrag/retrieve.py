@@ -11,6 +11,7 @@ from typing import Callable, Literal
 import numpy as np
 import yaml
 
+from .answer import build_answer_messages
 from .embed import DenseIndex
 from .graph import GraphIndex, GraphPath, _key
 from .schema import Evidence
@@ -198,19 +199,21 @@ class Retriever:
         scored.sort(key=lambda item: (-item.score, item.chunk.chunk_id))
 
         selected: list[Evidence] = []
-        section_counts: Counter[str] = Counter()
+        section_counts: Counter[tuple[str, str]] = Counter()
         index_by_id = {chunk.chunk_id: i for i, chunk in enumerate(self.dense.chunks)}
-        used_tokens = 0
         for item in scored:
             if len(selected) >= k:
                 break
             chunk = item.chunk
-            cost = self.token_counter(chunk.text)
-            if cost < 0:
+            message_costs = [
+                self.token_counter(message["content"])
+                for message in build_answer_messages(question, selected + [item])
+            ]
+            if any(cost < 0 for cost in message_costs):
                 raise ValueError("token 计数不能为负")
-            if used_tokens + cost > token_budget:
+            if sum(message_costs) > token_budget:
                 continue
-            section = _key(chunk.section)
+            section = (chunk.document_id, _key(chunk.section))
             if section_counts[section] >= self.config.max_per_section:
                 continue
             index = index_by_id[chunk.chunk_id]
@@ -224,5 +227,4 @@ class Retriever:
                 continue
             selected.append(item)
             section_counts[section] += 1
-            used_tokens += cost
         return selected

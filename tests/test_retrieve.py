@@ -60,9 +60,9 @@ def test_typed_path_can_surface_two_hop_english_evidence_from_chinese_seed():
     retriever = Retriever(dense, graph, RetrievalConfig(seed_k=2),
                           token_counter=lambda text: len(text))
     query = "隐状态与循环层有什么关系？"
-    dense_results = retriever.retrieve(query, "dense", 3, 200)
-    one_hop = retriever.retrieve(query, "one_hop", 5, 200)
-    typed = retriever.retrieve(query, "typed_path", 3, 200)
+    dense_results = retriever.retrieve(query, "dense", 3, 2000)
+    one_hop = retriever.retrieve(query, "one_hop", 5, 2000)
+    typed = retriever.retrieve(query, "typed_path", 3, 2000)
 
     assert "target" not in ids(dense_results)
     assert "target" not in ids(one_hop)
@@ -88,7 +88,7 @@ def test_seed_text_can_start_graph_expansion_without_carrying_edge_evidence():
     ], [], {})
 
     results = Retriever(dense, graph, RetrievalConfig(seed_k=1)).retrieve(
-        "隐状态用于什么？", "typed_path", 2, 200)
+        "隐状态用于什么？", "typed_path", 2, 2000)
     assert "target" in ids(results)
     target = next(item for item in results if item.chunk.chunk_id == "target")
     assert target.path == ("隐状态", "recurrent layers")
@@ -98,10 +98,11 @@ def test_dense_mode_does_not_access_graph():
     from kgrag.retrieve import RetrievalConfig, Retriever
 
     dense, _ = fixture()
-    assert ids(Retriever(dense).retrieve("隐状态与循环层有什么关系？", "dense", 2, 200)) == ["seed", "near"]
+    assert ids(Retriever(dense).retrieve("隐状态与循环层有什么关系？", "dense", 2, 2000)) == ["seed", "near"]
 
 
 def test_budget_dedup_and_cross_language_near_duplicate_limit():
+    from kgrag.answer import build_answer_messages
     from kgrag.retrieve import Retriever
 
     dense, graph = fixture()
@@ -109,14 +110,44 @@ def test_budget_dedup_and_cross_language_near_duplicate_limit():
     dense.chunks.append(duplicate)
     dense.vectors = np.vstack([dense.vectors, dense.vectors[0]])
     retriever = Retriever(dense, graph, token_counter=lambda text: len(text))
-    results = retriever.retrieve("隐状态与循环层有什么关系？", "dense", 6, 50)
+    query = "隐状态与循环层有什么关系？"
+    results = retriever.retrieve(query, "dense", 6, 2000)
 
+    assert results
     assert len(ids(results)) == len(set(ids(results)))
-    assert sum(len(item.chunk.text) for item in results) <= 50
+    assert sum(len(message["content"]) for message in build_answer_messages(query, results)) <= 2000
     assert not {"seed", "translation"}.issubset(ids(results))
     for mode in ("one_hop", "typed_path"):
-        selected = retriever.retrieve("隐状态与循环层有什么关系？", mode, 6, 50)
-        assert sum(len(item.chunk.text) for item in selected) <= 50
+        selected = retriever.retrieve(query, mode, 6, 2000)
+        assert selected
+        assert sum(len(message["content"]) for message in build_answer_messages(query, selected)) <= 2000
+
+
+def test_every_mode_limits_the_actual_answer_messages_including_metadata():
+    from kgrag.answer import generate_answer
+    from kgrag.retrieve import RetrievalConfig, Retriever
+
+    url = "https://example.org/" + "x" * 80
+    chunks = [
+        Chunk("a", "source", "doc", "Intro", "Alpha", "en", "a.md", 1, 1, url),
+        Chunk("b", "source", "doc", "Intro", "Beta", "en", "b.md", 1, 1, url),
+    ]
+    dense = DenseIndex(chunks, np.asarray([[1., 0.], [0.8, 0.2]]), QueryEmbedder())
+    graph = GraphIndex(chunks, [Edge("Alpha", "used_in", "Beta", "b", 0.95)], [], {})
+
+    class RecordingClient:
+        def complete_json(self, messages):
+            self.messages = messages
+            cited = json.loads(messages[1]["content"])["evidence"][0]["chunk_id"]
+            return {"answer": f"Fact.[{cited}]", "citation_chunk_ids": [cited]}
+
+    for mode in ("dense", "one_hop", "typed_path"):
+        selected = Retriever(dense, graph, RetrievalConfig(seed_k=1),
+                             token_counter=len).retrieve("Question?", mode, 2, 450)
+        assert len(selected) == 1
+        client = RecordingClient()
+        generate_answer("Question?", selected, client)
+        assert sum(len(message["content"]) for message in client.messages) <= 450
 
 
 def test_graph_edge_without_indexed_evidence_never_enters_results():
@@ -125,7 +156,7 @@ def test_graph_edge_without_indexed_evidence_never_enters_results():
     dense, graph = fixture()
     graph.edges.append(Edge("隐状态", "used_in", "fictional", "missing", 1.0))
     results = Retriever(dense, graph, RetrievalConfig(seed_k=2)).retrieve(
-        "隐状态与循环层有什么关系？", "typed_path", 5, 200)
+        "隐状态与循环层有什么关系？", "typed_path", 5, 2000)
     assert "missing" not in ids(results)
 
 
@@ -144,7 +175,7 @@ def test_two_hop_path_requires_indexed_evidence_for_every_edge():
     ], [], {})
 
     results = Retriever(dense, graph, RetrievalConfig(seed_k=1)).retrieve(
-        "乙如何用于丁？", "typed_path", 2, 200)
+        "乙如何用于丁？", "typed_path", 2, 2000)
     assert ids(results) == ["seed"]
 
 
@@ -157,8 +188,37 @@ def test_bilingual_near_duplicates_with_different_section_titles_share_limit():
     ]
     dense = DenseIndex(chunks, np.asarray([[1., 0.], [1., 0.]]), QueryEmbedder())
 
-    results = Retriever(dense).retrieve("隐状态与循环层", "dense", 2, 200)
+    results = Retriever(dense).retrieve("隐状态与循环层", "dense", 2, 2000)
     assert len(results) == 1
+
+
+def test_section_limit_does_not_combine_distinct_documents():
+    from kgrag.retrieve import RetrievalConfig, Retriever
+
+    chunks = [chunk(str(i), f"Distinct evidence {i}.", "en", "Introduction")
+              for i in range(3)]
+    dense = DenseIndex(chunks, np.asarray([[1., 0.], [0.9, 0.1], [0.8, 0.2]]),
+                       QueryEmbedder())
+
+    results = Retriever(dense, config=RetrievalConfig(max_per_section=2)).retrieve(
+        "question", "dense", 3, 1000)
+    assert ids(results) == ["0", "1", "2"]
+
+
+def test_section_limit_still_applies_inside_one_document():
+    from kgrag.retrieve import RetrievalConfig, Retriever
+
+    chunks = [chunk(str(i), f"Distinct evidence {i}.", "en", "Introduction")
+              for i in range(3)]
+    chunks = [Chunk(c.chunk_id, c.source_id, "shared-document", c.section, c.text,
+                    c.language, c.source_path, c.line_start, c.line_end, c.url)
+              for c in chunks]
+    dense = DenseIndex(chunks, np.asarray([[1., 0.], [0.9, 0.1], [0.8, 0.2]]),
+                       QueryEmbedder())
+
+    results = Retriever(dense, config=RetrievalConfig(max_per_section=2)).retrieve(
+        "question", "dense", 3, 1000)
+    assert ids(results) == ["0", "1"]
 
 
 def test_path_ablation_removes_graph_boost():
@@ -166,7 +226,7 @@ def test_path_ablation_removes_graph_boost():
 
     dense, graph = fixture()
     results = Retriever(dense, graph, RetrievalConfig(path_weight=0, seed_k=2)).retrieve(
-        "隐状态与循环层有什么关系？", "typed_path", 3, 200)
+        "隐状态与循环层有什么关系？", "typed_path", 3, 2000)
     assert "target" not in ids(results)
 
 
@@ -176,7 +236,7 @@ def test_unmentioned_seed_concept_cannot_boost_unrelated_evidence():
     dense, graph = fixture()
     graph.edges.append(Edge("decoder attention", "component_of", "masked attention", "near", 0.99))
     results = Retriever(dense, graph, RetrievalConfig(seed_k=2)).retrieve(
-        "隐状态与循环层有什么关系？", "typed_path", 5, 200)
+        "隐状态与循环层有什么关系？", "typed_path", 5, 2000)
     near = next(item for item in results if item.chunk.chunk_id == "near")
     assert near.path == ()
 
@@ -196,7 +256,7 @@ def test_spaced_question_concept_prefers_specific_encoder_path():
         Edge("层规范化", "used_in", "模型", "seed", 0.8),
     ], [], {})
     results = Retriever(dense, graph, RetrievalConfig(seed_k=1)).retrieve(
-        "层规范化在 Transformer 编码器中起什么作用？", "typed_path", 3, 200)
+        "层规范化在 Transformer 编码器中起什么作用？", "typed_path", 3, 2000)
     assert ids(results).index("specific") < ids(results).index("generic")
 
 
@@ -214,7 +274,7 @@ def test_best_path_uses_query_coverage_as_well_as_edge_confidence():
         Edge("Transformer编码器", "component_of", "前馈网络", "target", 0.95),
     ], [], {})
     results = Retriever(dense, graph, RetrievalConfig(seed_k=1)).retrieve(
-        "层规范化与 Transformer 编码器有什么关系？", "typed_path", 2, 200)
+        "层规范化与 Transformer 编码器有什么关系？", "typed_path", 2, 2000)
     target = next(item for item in results if item.chunk.chunk_id == "target")
     assert len(target.path) == 2
     assert set(target.path) == {"层规范化", "Transformer编码器"}
@@ -225,9 +285,9 @@ def test_relation_type_ablation_changes_mismatched_path_score():
 
     dense, graph = fixture()
     query = "隐状态和隐藏层有什么区别？"
-    weighted = Retriever(dense, graph, RetrievalConfig(seed_k=2)).retrieve(query, "typed_path", 5, 200)
+    weighted = Retriever(dense, graph, RetrievalConfig(seed_k=2)).retrieve(query, "typed_path", 5, 2000)
     unweighted = Retriever(dense, graph, RetrievalConfig(seed_k=2, use_relation_types=False)).retrieve(
-        query, "typed_path", 5, 200)
+        query, "typed_path", 5, 2000)
     weighted_target = next(item.score for item in weighted if item.chunk.chunk_id == "target")
     unweighted_target = next(item.score for item in unweighted if item.chunk.chunk_id == "target")
     assert weighted_target < unweighted_target
@@ -255,7 +315,7 @@ def test_cli_ask_uses_typed_path_and_reports_provenance(tmp_path):
         "kgrag.cli.DeepSeekChatClient", FakeClient
     ), redirect_stdout(output):
         assert main(["ask", "隐状态与循环层有什么关系？", "--mode", "typed_path",
-                     "--top-k", "3", "--token-budget", "200",
+                     "--top-k", "3", "--token-budget", "2000",
                      "--index-dir", str(tmp_path), "--graph-dir", str(tmp_path)]) == 0
     result = json.loads(output.getvalue())
     target = next(item for item in result["evidence"] if item["chunk_id"] == "target")
@@ -279,7 +339,7 @@ def test_reverse_traversal_keeps_original_relation_direction_in_evidence_and_cli
     ], [], {})
     query = "循环神经网络中的隐状态是什么？"
     results = Retriever(dense, graph, RetrievalConfig(seed_k=1)).retrieve(
-        query, "one_hop", 2, 200)
+        query, "one_hop", 2, 2000)
     target = next(item for item in results if item.chunk.chunk_id == "target")
     assert target.path == ("循环神经网络", "隐状态")
     assert target.path_relations == ("component_of",)
@@ -302,7 +362,7 @@ def test_reverse_traversal_keeps_original_relation_direction_in_evidence_and_cli
         "kgrag.cli.DeepSeekChatClient", FakeClient
     ), redirect_stdout(output):
         assert main(["ask", query, "--mode", "one_hop", "--top-k", "2",
-                     "--token-budget", "200", "--index-dir", str(tmp_path),
+                     "--token-budget", "2000", "--index-dir", str(tmp_path),
                      "--graph-dir", str(tmp_path)]) == 0
     payload = json.loads(output.getvalue())
     target_json = next(item for item in payload["evidence"] if item["chunk_id"] == "target")

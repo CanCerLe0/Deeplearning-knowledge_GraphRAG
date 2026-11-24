@@ -20,11 +20,8 @@ INLINE_CITATION_RE = re.compile(r"\[([A-Za-z0-9_-]+)\]")
 CLAIM_RE = re.compile(r"[^。！？；\n]+(?:[。！？；]+(?:\s*\[[A-Za-z0-9_-]+\])*)?")
 
 
-def generate_answer(question: str, evidence: list[Evidence], client: ChatClient) -> Answer:
-    """过滤不在本次证据中的 ID；没有有效引用时拒答。"""
-    if not evidence:
-        return Answer(REFUSAL, [])
-    supplied = {item.chunk.chunk_id for item in evidence}
+def build_answer_messages(question: str, evidence: list[Evidence]) -> list[dict[str, str]]:
+    """构造检索预算和答案生成共用的实际消息内容。"""
     passages = [
         {
             "chunk_id": item.chunk.chunk_id,
@@ -35,12 +32,20 @@ def generate_answer(question: str, evidence: list[Evidence], client: ChatClient)
         }
         for item in evidence
     ]
-    result = client.complete_json([
+    return [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": json.dumps(
             {"question": question, "evidence": passages}, ensure_ascii=False
         )},
-    ])
+    ]
+
+
+def generate_answer(question: str, evidence: list[Evidence], client: ChatClient) -> Answer:
+    """过滤不在本次证据中的 ID；没有有效引用时拒答。"""
+    if not evidence:
+        return Answer(REFUSAL, [])
+    supplied = {item.chunk.chunk_id for item in evidence}
+    result = client.complete_json(build_answer_messages(question, evidence))
     text = result.get("answer")
     raw_citations = result.get("citation_chunk_ids")
     if not isinstance(text, str) or not isinstance(raw_citations, list):
