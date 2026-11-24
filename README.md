@@ -51,7 +51,7 @@ python -m kgrag.cli ask "束搜索与贪心搜索有什么区别？" --mode type
 
 ## 开发题初评与扩展入库
 
-`data/eval/dev.jsonl` 有 12 道按当前固定语料与默认分片配置核查的开发题：单概念、多跳、比较和不可回答题。每个必需证据组列出可以支持同一论点的候选片段 ID；新增语料或更改分片参数后，应重新核查这些 ID 与不可回答题边界。三路初评共用索引、检索配置、Top-k、上下文预算与生成参数：
+`data/eval/dev.jsonl` 有 12 道按当前固定语料与默认分片配置核查的开发题：单概念、多跳、比较和领域内但语料缺少答案的题。每个必需证据组列出可以支持同一论点的候选片段 ID；新增语料或更改分片参数后，应重新核查这些 ID 与不可回答题边界。三路初评共用索引、检索配置、Top-k、上下文预算与生成参数：
 
 ```bash
 python -m kgrag.cli eval --retrieval-only --questions data/eval/dev.jsonl --output data/runs/dev_retrieval.jsonl

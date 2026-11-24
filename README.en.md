@@ -51,7 +51,7 @@ python -m kgrag.cli ask "束搜索与贪心搜索有什么区别？" --mode type
 
 ## Development evaluation and corpus extension
 
-`data/eval/dev.jsonl` contains 12 development questions checked against the current pinned corpus and default chunking settings: single-concept, multi-hop, comparison, and unanswerable questions. Each required evidence group lists candidate passage IDs that support the same claim. After adding sources or changing chunking, recheck these IDs and the boundary of unanswerable questions. All three modes share the index, retrieval configuration, Top-k, context budget, and generation settings:
+`data/eval/dev.jsonl` contains 12 development questions checked against the current pinned corpus and default chunking settings: single-concept, multi-hop, comparison, and in-domain questions unanswered by the corpus. Each required evidence group lists candidate passage IDs that support the same claim. After adding sources or changing chunking, recheck these IDs and the boundary of unanswerable questions. All three modes share the index, retrieval configuration, Top-k, context budget, and generation settings:
 
 ```bash
 python -m kgrag.cli eval --retrieval-only --questions data/eval/dev.jsonl --output data/runs/dev_retrieval.jsonl
