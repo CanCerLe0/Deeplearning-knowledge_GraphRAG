@@ -95,13 +95,16 @@ def test_unfilled_blind_rating_is_rejected():
         score_annotations(template, key)
 
 
-def test_test_questions_are_distinct_and_reference_indexed_chunks():
+def test_all_selected_questions_are_distinct_and_have_valid_labels():
     root = Path(__file__).resolve().parents[1]
     rows = [json.loads(line) for line in (root / "data/eval/test.jsonl").read_text(encoding="utf-8").splitlines()]
     dev = [json.loads(line) for line in (root / "data/eval/dev.jsonl").read_text(encoding="utf-8").splitlines()]
-    assert len(rows) == len({row["id"] for row in rows}) == 36
+    assert len(rows) == len({row["id"] for row in rows}) == 60
     assert Counter(row["type"] for row in rows) == {
-        "single_concept": 8, "multi_hop": 16, "comparison": 6, "unanswerable": 6,
+        "single_concept": 14, "multi_hop": 26, "comparison": 10, "unanswerable": 10,
+    }
+    assert {row.get("candidate_id") for row in rows if row.get("candidate_id")} == {
+        f"B{number:02d}" for number in range(1, 25)
     }
     assert not {row["question"] for row in rows} & {row["question"] for row in dev}
     assert all(row["review_status"] == "pending_author_review" for row in rows)

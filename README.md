@@ -2,11 +2,11 @@
 
 [简体中文](README.md) | [English](README.en.md)
 
-本仓库正在构建一个基于《动手学深度学习》中英文 Markdown 的本地图谱增强 RAG 实验项目。已实现纯向量检索、无权一跳图扩展和关系感知的最多两跳检索，并用原文片段支持中文回答；已有 12 道开发题和三路初评命令，正式封存测试仍待完成。
+本仓库正在构建一个基于《动手学深度学习》中英文 Markdown 的本地图谱增强 RAG 实验项目。已实现纯向量检索、无权一跳图扩展和关系感知的最多两跳检索，并用原文片段支持中文回答；已有 12 道开发题、60 道待人工核查的测试题和三路初评命令，正式封存测试仍待完成。
 
 项目的[实施计划](docs/图谱增强RAG实施计划.md)、[设计草案](docs/图谱增强RAG项目设计草案.md)和[双语设计补充](docs/双语本地Markdown设计补充.md)说明了研究问题、数据流程与验收标准。
 
-目前仓库提供项目文档、自写中英文示例文本、固定版本教材下载、离线 Markdown 入库、统一双语向量索引、可审核的概念图，以及三路检索与原文证据支持的中文回答。`fetch` 按来源清单下载并校验文件；`ingest` 离线分片；`build-index` 使用本地 embedding 构建 NumPy 余弦索引；`build-graph` 调用可配置的 DeepSeek 兼容接口抽取关系并复用本地缓存；`ask` 按所选模式本地检索，再调用该接口生成中文回答；`eval` 对 12 道开发题运行三路对照。封存测试、正式评测和网页演示仍待实现。第三方教材文件与生成的索引仅保存在本地，不提交到此仓库。
+目前仓库提供项目文档、自写中英文示例文本、固定版本教材下载、离线 Markdown 入库、统一双语向量索引、可审核的概念图，以及三路检索与原文证据支持的中文回答。`fetch` 按来源清单下载并校验文件；`ingest` 离线分片；`build-index` 使用本地 embedding 构建 NumPy 余弦索引；`build-graph` 调用可配置的 DeepSeek 兼容接口抽取关系并复用本地缓存；`ask` 按所选模式本地检索，再调用该接口生成中文回答；`eval` 默认对 12 道开发题运行三路对照，也可指定测试题文件。测试题人工核查与封存、正式评测和网页演示仍待完成。第三方教材文件与生成的索引仅保存在本地，不提交到此仓库。
 
 ## RAG 检索流程与当前策略
 
@@ -58,7 +58,7 @@ python -m kgrag.cli eval --retrieval-only --questions data/eval/dev.jsonl --outp
 python -m kgrag.cli eval --questions data/eval/dev.jsonl --output data/runs/dev_eval.jsonl
 ```
 
-`--retrieval-only` 不创建生成客户端，输出不含教材正文，`answer` 为 `null`；完整评测输出逐题记录模式、片段 ID、语言、固定版本链接、答案、引用、检索及生成耗时、API token 用量和运行配置。两种输出均包含题集、向量索引和图审核状态的指纹。`data/runs/` 是本地输出，不提交；开发题只用于调试和初评，不代表封存测试集的最终效果。检索与回答初评见[开发集结果](docs/results.md)，正式封存测试与盲评仍待完成。检索初评需先完成下载、入库、索引和构图；完整评测还需设置密钥。
+`--retrieval-only` 不创建生成客户端，输出不含教材正文，`answer` 为 `null`；完整评测输出逐题记录模式、片段 ID、语言、固定版本链接、答案、引用、检索及生成耗时、API token 用量和运行配置。两种输出均包含题集、向量索引和图审核状态的指纹。`data/runs/` 是本地输出，不提交；开发题只用于调试和初评，不代表封存测试集的最终效果。[60 道测试题](data/eval/test.jsonl)已列入文件但仍标记待作者核查，正式封存测试与盲评尚未进行。检索与回答初评见[开发集结果](docs/results.md)。检索初评需先完成下载、入库、索引和构图；完整评测还需设置密钥。
 
 新增自写 Markdown 时，把文件放入 `data/sample/`，再在 `config/sources.yaml` 添加 `kind: local_markdown`、唯一 `source_id`、相对仓库根目录的 `path`、`title`、`language` 和 `license_note`；随后重新运行 `ingest`、`build-index` 和 `build-graph`。未改变的旧片段 ID 和原链接保持稳定。`fetch` 对校验通过的已下载教材文件可离线复用，`ingest` 与 `build-index` 本身不调用生成 API。
 
