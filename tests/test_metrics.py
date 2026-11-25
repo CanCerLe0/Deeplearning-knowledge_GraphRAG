@@ -60,7 +60,7 @@ def test_retrieval_summary_rejects_incomplete_mode():
 def test_blind_template_hides_mode_and_scores_checked_answers():
     questions = [
         {"id": "q1", "question": "问题一？", "type": "single_concept", "gold_answer": "答案一。",
-         "required_evidence_groups": [["a"]]},
+         "required_evidence_groups": [["a"]], "gold_evidence_languages": ["en", "zh"]},
         {"id": "q2", "question": "问题二？", "type": "unanswerable",
          "gold_answer": "证据不足。", "required_evidence_groups": []},
     ]
@@ -83,6 +83,9 @@ def test_blind_template_hides_mode_and_scores_checked_answers():
     scored = score_annotations(template, key)
     assert scored["dense"]["answer_correct_rate"] == 1.0
     assert scored["dense"]["refusal_accuracy"] == 1.0
+    assert scored["dense"]["by_question_type"]["single_concept"]["question_count"] == 1
+    assert scored["dense"]["by_gold_language"]["en+zh"]["answer_correct_rate"] == 1.0
+    assert scored["dense"]["by_retrieved_language"]["zh"]["citation_support_rate"] == 1.0
 
 
 def test_unfilled_blind_rating_is_rejected():
@@ -108,7 +111,7 @@ def test_all_selected_questions_are_distinct_and_have_valid_labels():
         "review_status", "gold_evidence_languages",
     } for row in rows)
     assert not {row["question"] for row in rows} & {row["question"] for row in dev}
-    assert all(row["review_status"] == "pending_author_review" for row in rows)
+    assert all(row["review_status"] == "approved_by_author" for row in rows)
     for row in rows:
         groups = row["required_evidence_groups"]
         assert bool(groups) != (row["type"] == "unanswerable")

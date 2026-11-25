@@ -55,7 +55,8 @@ def make_blind_template(
             "failure_category": None,
             "notes": "",
         })
-        key.append({"blind_id": blind_id, "question_id": question_id, "mode": row["mode"]})
+        key.append({"blind_id": blind_id, "question_id": question_id, "mode": row["mode"],
+                    "gold_evidence_languages": question.get("gold_evidence_languages", [])})
     return template, key
 
 
@@ -76,13 +77,12 @@ def score_annotations(annotations: list[dict], key: list[dict]) -> dict:
             raise ValueError(f"{blind_id} 尚未核查引用")
         if item["question_type"] == "unanswerable" and type(item.get("refusal_correct")) is not bool:
             raise ValueError(f"{blind_id} 尚未核查拒答")
-        grouped[by_blind[blind_id]["mode"]].append(item)
+        grouped[by_blind[blind_id]["mode"]].append((item, by_blind[blind_id]))
 
-    result = {}
-    for mode, items in grouped.items():
+    def aggregate(items: list[dict]) -> dict:
         unanswerable = [item for item in items if item["question_type"] == "unanswerable"]
         cited = [item for item in items if item["citation_chunk_ids"]]
-        result[mode] = {
+        return {
             "question_count": len(items),
             "answer_correct_rate": sum(item["answer_rating"] == 2 for item in items) / len(items),
             "answer_partial_rate": sum(item["answer_rating"] == 1 for item in items) / len(items),
@@ -96,6 +96,26 @@ def score_annotations(annotations: list[dict], key: list[dict]) -> dict:
             "failure_cases": [{"question_id": item["question_id"],
                                "category": item["failure_category"], "notes": item["notes"]}
                               for item in items if item.get("failure_category")],
+        }
+
+    result = {}
+    for mode, pairs in grouped.items():
+        by_type = defaultdict(list)
+        by_gold_language = defaultdict(list)
+        by_retrieved_language = defaultdict(list)
+        for item, identity in pairs:
+            by_type[item["question_type"]].append(item)
+            gold_language = "+".join(sorted(identity.get("gold_evidence_languages", []))) or "none"
+            by_gold_language[gold_language].append(item)
+            retrieved_language = "+".join(sorted({entry["language"] for entry in item["evidence"]})) or "none"
+            by_retrieved_language[retrieved_language].append(item)
+        result[mode] = aggregate([item for item, _ in pairs])
+        result[mode]["by_question_type"] = {name: aggregate(items) for name, items in by_type.items()}
+        result[mode]["by_gold_language"] = {
+            name: aggregate(items) for name, items in by_gold_language.items()
+        }
+        result[mode]["by_retrieved_language"] = {
+            name: aggregate(items) for name, items in by_retrieved_language.items()
         }
     return result
 
