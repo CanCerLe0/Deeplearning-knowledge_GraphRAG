@@ -55,7 +55,7 @@
 | `data/sample/` | 自写的小型双语 Markdown 文档；仅此示例语料进 Git |
 | `data/eval/` | 自写题目与人工核查的中英文替代证据组，不含教材正文 |
 | `tests/` | 无网络、无真实模型的单元和端到端小样本测试 |
-| `docs/图谱增强RAG项目设计草案.md`、`docs/图谱增强RAG实施计划.md`、`docs/双语本地Markdown设计补充.md`、`docs/results.md`、`docs/数据来源.md` | 设计、实施计划、补充设计、实验与来源 |
+| `docs/图谱增强RAG项目设计草案.md`、`docs/图谱增强RAG实施计划.md`、`docs/双语本地Markdown设计补充.md`、`docs/评测结果.md`、`docs/数据来源.md` | 设计、实施计划、补充设计、实验与来源 |
 
 ## Shared Interfaces
 
@@ -128,19 +128,19 @@
 
 ### Task 6: 封存测试、指标与消融（第 8–11 天）
 
-**Files:** `data/eval/test.jsonl`、`src/kgrag/evaluate.py`、`tests/test_metrics.py`、`docs/results.md`、`scripts/score_annotations.py`。
+**Files:** `data/eval/test.jsonl`、`src/kgrag/evaluate.py`、`tests/test_metrics.py`、`docs/评测结果.md`、`scripts/score_annotations.py`。
 
 **Interfaces:** 产出 `recall_at_k(required_groups: list[set[str]], retrieved: list[str], k: int) -> float`、`complete_evidence_hit(required_groups: list[set[str]], retrieved: list[str], k: int) -> bool` 和每题人工评分模板；每组为同一论点的人工确认替代片段，命中其中一个即可。输出按题型及证据语言分组的结果表和失败案例。
 
 - [ ] **Step 1: 写失败测试。** 构造 2 个必需证据组、只命中 1 组的例子，断言 `Recall@5=0.5` 且完整证据命中为 `False`；其中一组含可替代的中英文片段 ID，命中任一只计一次。空证据组题不进入证据召回平均值，但用于拒答评分。
 - [ ] **Step 2: 运行 `python -m pytest tests/test_metrics.py -v`。** 预期失败。
 - [ ] **Step 3: 实现证据组指标、盲评模板和消融配置。** 逐题核查中英文可替代证据并封存 60 道测试题；加入英文后重审不可回答题，至少一半的全部 72 题由作者依据原文自行撰写，测试题不从已抽取图边反向生成。抽查至少 40 条图边，记录 precision 与典型错误。
-- [ ] **Step 4: 固定两个仓库版本、语料清单及检索参数后仅运行一次主测试集对照；对三种模式的 60 题答案做匿名人工评分。** 记录证据组 Recall@5、多跳完整召回、答案/引用正确率、拒答准确率、证据语言、延迟与 API 用量；做 `β=0` 与关闭类型权重的消融，并在 `docs/results.md` 写明样本规模的限制。
+- [ ] **Step 4: 固定两个仓库版本、语料清单及检索参数后仅运行一次主测试集对照；对三种模式的 60 题答案做匿名人工评分。** 记录证据组 Recall@5、多跳完整召回、答案/引用正确率、拒答准确率、证据语言、延迟与 API 用量；做 `β=0` 与关闭类型权重的消融，并在 `docs/评测结果.md` 写明样本规模的限制。
 - [ ] **Step 5: 测试通过并提交。** `git commit -m "eval: add held-out comparison and ablations"`。
 
 ### Task 7: 演示与公开仓库材料（第 12–13 天）
 
-**Files:** `app.py`、`src/kgrag/graph_view.py`、`README.md`、`.env.example`、`LICENSE`、`docs/results.md`、`docs/数据来源.md`、`tests/test_release_fixture.py`、`tests/test_graph_view.py`。
+**Files:** `app.py`、`src/kgrag/graph_view.py`、`README.md`、`.env.example`、`LICENSE`、`docs/评测结果.md`、`docs/数据来源.md`、`tests/test_release_fixture.py`、`tests/test_graph_view.py`。
 
 **Interfaces:** 导航栏在“问答”与“知识图谱”之间切换。问答页调用已有 `retrieve` 与 `generate_answer`，展示三路答案、引用原文和被使用的局部概念路径。知识图谱页从 `GraphIndex` 读取全部活跃节点和边，点击概念节点时展示相邻关系及其证据片段正文、语言、来源位置和固定版本链接；不在 UI 中复制检索算法，也不为浏览图谱调用生成 API。
 
@@ -152,13 +152,13 @@
 
 ### Task 8: 干净环境复现与 GitHub 发布（第 14 天）
 
-**Files:** 仅修复复现或发布检查发现的问题；更新 `README.md`、`docs/results.md` 与必要配置。
+**Files:** 仅修复复现或发布检查发现的问题；更新 `README.md`、`docs/评测结果.md` 与必要配置。
 
 **Interfaces:** 最终交付个人账号下公开 GitHub 仓库 URL；代码、设计、实验结果和演示可从仓库访问。
 
 - [ ] **Step 1: 在新虚拟环境运行 README 的安装、双语下载/校验、离线入库、测试、问答和评测命令。** 记录 Python 版本、依赖锁定、多语言 embedding 模型 ID、生成模型 ID、两个仓库的提交与文件哈希、运行配置。
 - [ ] **Step 2: 检查 `git status`、待提交文件和 Git 历史。** 确认无 `.env`、真实密钥、`data/raw/` 下的中英文教材正文、全文索引或含密钥日志；运行全套 `python -m pytest -q`，有可用密钥时再做一次真实 API 冒烟检查。
-- [ ] **Step 3: 修复具体问题并重复失败的检查。** README 中的运行结果与 `docs/results.md` 一致。
+- [ ] **Step 3: 修复具体问题并重复失败的检查。** README 中的运行结果与 `docs/评测结果.md` 一致。
 - [ ] **Step 4: 用作者自己的 GitHub 账号创建公开仓库并推送。** 先检查当前 GitHub 工具的认证状态；需要时连接作者账号。确认仓库所有者、可见性为 Public、默认分支包含全部交付物。
 - [ ] **Step 5: 打开公开仓库 URL，核对 README、许可、结果图、演示和克隆后的复现命令。** 记录最终 URL 与提交 SHA，供简历和面试使用。
 
